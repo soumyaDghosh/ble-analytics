@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+{% block title %}{% if obj %}Edit{% else %}New{% endif %} {{ kind }} · City Center Directory{% endblock %}
+{% block heading %}{% if obj %}Edit{% else %}New{% endif %} {{ kind }}{% endblock %}
+{% block subheading %}<p class="mt-0.5 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">{% if kind == 'store' %}Adjust the footprint on graph paper — drag inside to move, corners to reshape{% else %}Click the graph paper to set the beacon position{% endif %}</p>{% endblock %}
+
+{% comment %}Graph-paper place editor. Same engine grammar as the floor editor
+(floor_form.html): metre grid, rulers (origin bottom-left, Y up), zoom/pan/snap.
+Store = footprint polygon (full corner/wall/insert/close + whole-shape drag),
+seeded as a square when the shop has none. Beacon = single dot. Both draw the
+floor boundary + other shops (toggle) + assigned beacons as context.
+ponytail: grid/zoom/pan math is a second copy of floor_form's — acceptable at 2
+consumers; extract a shared _board_editor.html partial only if a 3rd appears or
+they diverge painfully.{% endcomment %}
+{% block content %}
+{{ floor_spaces|json_script:"floor-spaces" }}
+{{ ref_stores|json_script:"ref-stores" }}
+{{ ref_beacons|json_script:"ref-beacons" }}
+<form method="post" enctype="multipart/form-data" class="grid gap-6 lg:grid-cols-[1fr_320px]">
+  {% csrf_token %}
+  {% for h in form.hidden_fields %}{{ h }}{% endfor %}
+
+  <!-- Graph paper -->
+  <div>
+    <div id="paper-box" class="relative w-full overflow-hidden rounded-lg border border-line" style="aspect-ratio:1000/720; background:#FBFCFD; touch-action:none; cursor:crosshair">
+      <svg id="paper" viewBox="0 0 1000 720" class="absolute inset-0 h-full w-full" font-family="'IBM Plex Mono', monospace">
+        <rect id="paper-bg" x="0" y="0" width="1000" height="720" fill="#FBFCFD"/>
+        <!-- the floor's declared W×H area -->
+        <rect id="floor-guide" x="0" y="0" width="1000" height="720" fill="#0E7C66" fill-opacity="0.04"
+              stroke="#0E7C66" stroke-opacity="0.35" stroke-width="1.4" stroke-dasharray="7 5" vector-effect="non-scaling-stroke"/>
+        <!-- the floor's drawn boundary (when set) -->
+        <polygon id="floor-outline" fill="none" stroke="#B9C0C8" stroke-width="2" vector-effect="non-scaling-stroke" style="display:none"/>
+        <g id="grid"></g>
+        <!-- other shops on this floor (toggle) -->
+        <g id="refs" style="display:none"></g>
+        <!-- store edit layer -->
+        <polygon id="shape-fill" fill="#E8A317" fill-opacity="0.12" stroke="none" style="display:none"/>
+        <polyline id="shape-line" fill="none" stroke="#E8A317" stroke-width="1.8" stroke-linejoin="round" vector-effect="non-scaling-stroke" style="display:none"/>
+        <line id="add-preview" stroke="#0E7C66" stroke-width="1.4" stroke-dasharray="5 4" vector-effect="non-scaling-stroke" opacity="0.8" style="display:none"/>
+        <line id="splice-hint" stroke="#0E7C66" stroke-width="3.4" stroke-linecap="round" vector-effect="non-scaling-stroke" opacity="0.85" style="display:none"/>
+        <!-- beacon dots ABOVE the footprint so a shop's own beacons aren't buried:
+             assigned (checked) = green, others faint amber. Below the corner handles. -->
+        <g id="beacon-refs"></g>
+        <g id="handles"></g>
+        <!-- beacon edit layer -->
+        <circle id="marker" r="9" fill="#E8A317" stroke="#14181F" stroke-width="2" vector-effect="non-scaling-stroke" style="display:none"/>
+        <g id="rulers"></g>
+        <g id="crosshair" style="display:none">
+          <line id="ch-v" stroke="#E8A317" stroke-width="1" vector-effect="non-scaling-stroke" opacity="0.8"/>
+          <line id="ch-h" stroke="#E8A317" stroke-width="1" vector-effect="non-scaling-stroke" opacity="0.8"/>
+          <circle id="ch-dot" r="3" fill="#E8A317"/>
+        </g>
+      </svg>
+    </div>
+
+    <!-- toolbar -->
+    <div class="mt-2 flex flex-wrap items-center gap-2">
+      <div class="inline-flex rounded-md border border-line bg-surface">
+        <button type="button" id="zoom-out" class="px-3 py-1.5 text-sm text-muted hover:text-ink">−</button>
+        <button type="button" id="zoom-in" class="border-l border-line px-3 py-1.5 text-sm text-muted hover:text-ink">+</button>
+        <button type="button" id="fit" class="border-l border-line px-3 py-1.5 text-sm text-muted hover:text-ink">Fit</button>
+      </div>
+      {% if kind == 'store' %}
+      <button type="button" id="close-btn" class="rounded-md border border-signal bg-surface px-3 py-1.5 text-sm font-600 text-signal hover:bg-signal/10" style="display:none">Close footprint</button>
+      <button type="button" id="reopen-btn" class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-muted hover:text-ink" style="display:none">Reopen</button>
+      <button type="button" id="undo" class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-muted hover:text-ink">Undo</button>
+      <button type="button" id="clear" class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-muted hover:text-ink">Clear</button>
+      {% endif %}
+      <label class="inline-flex cursor-pointer items-center gap-1.5 text-sm text-muted">
+        <input type="checkbox" id="snap" checked class="accent-signal"> snap
+      </label>
+      <label class="inline-flex cursor-pointer items-center gap-1.5 text-sm text-muted">
+        <input type="checkbox" id="show-refs" class="accent-signal"> show shops
+      </label>
+    </div>
+
+    <!-- one contextual readout line -->
+    <div class="mt-2 rounded-md border border-line bg-surface px-4 py-2.5">
+      <p id="measure-line" class="font-display text-base font-600 text-ink">&nbsp;</p>
+      <p class="mt-0.5 font-mono text-[11px] text-muted">{% if kind == 'store' %}<b>drawing:</b> click empty grid to add a corner · click corner 1 (or “Close footprint”) to finish · <b>after closing:</b> drag inside to move the whole shape · drag a corner or wall to reshape · click a wall to insert a corner · click a corner to delete · drag empty to pan · scroll to zoom{% else %}click the grid to drop the beacon · drag empty to pan · scroll to zoom{% endif %} · origin bottom-left (Y up)</p>
+      {% if kind == 'store' %}<div class="mt-1 text-sm text-[#C43D2E]">{{ form.shape_json.errors }}</div>{% endif %}
+    </div>
+  </div>
+
+  <!-- Fields -->
+  <div class="space-y-4">
+    {% for field in form.visible_fields %}
+    <div>
+      <label class="mb-1 block text-sm font-500">{{ field.label }}</label>
+      {% if field.name == 'beacons' %}
+        <p class="mb-2 text-xs text-muted">Beacons that belong to this store. Unchecking releases a beacon (it becomes unassigned). Only unassigned beacons on this floor are listed.</p>
+        <div class="flex flex-wrap gap-2">
+          {% for cb in field %}
+          <label class="flex cursor-pointer items-center gap-2 rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-mono has-[:checked]:border-signal has-[:checked]:bg-signal/10">
+            {{ cb.tag }} <span>{{ cb.choice_label }}</span>
+          </label>
+          {% empty %}
+          <span class="text-xs text-muted">No unassigned beacons on this floor — add beacons first.</span>
+          {% endfor %}
+        </div>
+      {% else %}
+        {{ field }}
+      {% endif %}
+      {% if field.help_text %}<p class="mt-1 text-xs text-muted">{{ field.help_text }}</p>{% endif %}
+      {{ field.errors }}
+    </div>
+    {% endfor %}
+    {{ form.non_field_errors }}
+    <div class="flex items-center gap-3 pt-1">
+      <button class="rounded-md bg-ink px-4 py-2.5 text-sm font-600 text-white hover:bg-black transition">Save {{ kind }}</button>
+      <a href="{% url kind|add:'s' %}" class="text-sm text-muted hover:text-ink">Cancel</a>
+    </div>
+  </div>
+</form>
+
+<script>
+(function(){
+  var box = document.getElementById('paper-box'), svg = document.getElementById('paper');
+  var kind = "{{ kind }}";
+  var INIT_FLOOR = "{{ init_floor_id }}";
+  var SPACES = JSON.parse(document.getElementById('floor-spaces').textContent);
+  var REF_STORES = JSON.parse(document.getElementById('ref-stores').textContent);
+  var REF_BEACONS = JSON.parse(document.getElementById('ref-beacons').textContent);
+  var floorSel = document.getElementById('id_floor');
+  var snap = document.getElementById('snap'), showRefs = document.getElementById('show-refs');
+  var grid = document.getElementById('grid'), rulers = document.getElementById('rulers'), handles = document.getElementById('handles');
+  var guide = document.getElementById('floor-guide'), fOutline = document.getElementById('floor-outline');
+  var oFill = document.getElementById('shape-fill'), oLine = document.getElementById('shape-line');
+  var marker = document.getElementById('marker');
+  var cross = document.getElementById('crosshair'), chv = document.getElementById('ch-v'), chh = document.getElementById('ch-h'), chd = document.getElementById('ch-dot');
+  var mLine = document.getElementById('measure-line');
+  var closeBtn = document.getElementById('close-btn'), reopenBtn = document.getElementById('reopen-btn');
+  var shapeField = document.getElementById('id_shape_json');
+  var fx = document.getElementById('id_pos_x'), fy = document.getElementById('id_pos_y');
+  var STEPS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
+
+  // sp = active floor coordinate space; view = current viewBox window
+  var sp = {W:1000, H:720, ppm:20, pad:0, grid:40, metered:false, outline:''};
+  var view = {x:0, y:0, w:1000, h:720};
+  var pts = [], closed = false, snapPx = 40, hoverDel = -1, hoverClose = false, hist = [];
+  var bpos = null;   // beacon marker position [x,y] or null
+
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function m(v){ return (Math.round(v*100)/100).toString(); }
+  function curFloor(){ return (floorSel && floorSel.value) ? floorSel.value : INIT_FLOOR; }
+  function clientW(){ return box.clientWidth || 760; }
+  function lblX(x){ return sp.metered ? m(x/sp.ppm) : String(Math.round(x)); }
+  function lblY(y){ return sp.metered ? m((sp.H - y)/sp.ppm) : String(Math.round(y)); }
+
+  function sync(){
+    if (kind === 'store'){ shapeField.value = pts.length ? JSON.stringify(pts) : ''; }
+    else if (bpos){ fx.value = bpos[0]; fy.value = bpos[1]; }
+  }
+  function push(){ if (kind !== 'store') return; hist.push(JSON.stringify({p:pts, c:closed})); if (hist.length > 60) hist.shift(); }
+  function undo(){ if (kind === 'store' && hist.length){ var s = JSON.parse(hist.pop()); pts = s.p; closed = !!s.c; hoverDel = -1; hoverClose = false; redraw(); } }
+
+  function perim(){ var d=0; for (var i=0;i<pts.length;i++){ var a=pts[i], b=pts[(i+1)%pts.length]; d+=Math.hypot(b[0]-a[0], b[1]-a[1]); } return sp.metered ? d/sp.ppm : d; }
+  function area(){ var s=0; for (var i=0;i<pts.length;i++){ var a=pts[i], b=pts[(i+1)%pts.length]; s+=a[0]*b[1]-b[0]*a[1]; } var v=Math.abs(s)/2; return sp.metered ? v/(sp.ppm*sp.ppm) : v; }
+
+  // distance from point p to segment a-b — slot a new corner into the nearest wall
+  function segDist(p,a,b){
+    var vx=b[0]-a[0], vy=b[1]-a[1], L=vx*vx+vy*vy;
+    var t = L ? Math.max(0, Math.min(1, ((p[0]-a[0])*vx+(p[1]-a[1])*vy)/L)) : 0;
+    return Math.hypot(p[0]-(a[0]+t*vx), p[1]-(a[1]+t*vy));
+  }
+  function nearestEdge(e, excl){
+    var bi=-1, bd=14, n=pts.length;   // within 14 screen px counts as "on the wall"
+    for (var i=0;i<n;i++){
+      if (excl.indexOf(i) >= 0) continue;
+      var d = segDist([e.clientX, e.clientY], screenOf(pts[i]), screenOf(pts[(i+1)%n]));
+      if (d<bd){ bd=d; bi=i; }
+    }
+    return bi;
+  }
+  // even-odd ray cast — is a board-space point inside the closed footprint?
+  function pointInPoly(pt, poly){
+    var x=pt[0], y=pt[1], inside=false;
+    for (var i=0, j=poly.length-1; i<poly.length; j=i++){
+      var xi=poly[i][0], yi=poly[i][1], xj=poly[j][0], yj=poly[j][1];
+      if (((yi>y) !== (yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) inside = !inside;
+    }
+    return inside;
+  }
+  // default footprint when a shop has none: a square ~1/6 of the shorter side,
+  // centred on the shop's saved position (or the floor centre for a new shop)
+  function seedSquare(){
+    var cx = (fx && parseInt(fx.value)) || Math.round(sp.W/2);
+    var cy = (fy && parseInt(fy.value)) || Math.round(sp.H/2);
+    var half = Math.max(sp.grid, Math.round(Math.min(sp.W, sp.H)/6)) / 2;
+    return [[cx-half,cy-half],[cx+half,cy-half],[cx+half,cy+half],[cx-half,cy+half]]
+      .map(function(p){ return clampPt(p[0], p[1]); });
+  }
+
+  // grid/snap step in board px: metre steps on metered floors, fixed grid on legacy
+  function stepPx(){
+    if (!sp.metered) return sp.grid;
+    var screenPerM = sp.ppm / (view.w / clientW());
+    for (var i=0;i<STEPS.length;i++) if (STEPS[i]*screenPerM >= 18) return STEPS[i]*sp.ppm;
+    return STEPS[STEPS.length-1]*sp.ppm;
+  }
+  function clampPt(x,y){ return [Math.max(-sp.pad, Math.min(sp.W+sp.pad, Math.round(x))), Math.max(-sp.pad, Math.min(sp.H+sp.pad, Math.round(y)))]; }
+  function snapPt(u){ var x=u[0], y=u[1]; if (snap.checked){ x=Math.round(x/snapPx)*snapPx; y=Math.round(y/snapPx)*snapPx; } return clampPt(x,y); }
+  function cursor(e){ var r=box.getBoundingClientRect(); return [view.x+(e.clientX-r.left)/r.width*view.w, view.y+(e.clientY-r.top)/r.height*view.h]; }
+  function screenOf(p){ var r=box.getBoundingClientRect(); return [r.left+(p[0]-view.x)/view.w*r.width, r.top+(p[1]-view.y)/view.h*r.height]; }
+  function hitHandle(e){ var bi=-1, bd=12; for (var i=0;i<pts.length;i++){ var s=screenOf(pts[i]), d=Math.hypot(e.clientX-s[0], e.clientY-s[1]); if (d<bd){ bd=d; bi=i; } } return bi; }
+
+  function drawHandles(){
+    if (kind !== 'store'){ handles.innerHTML=''; return; }
+    var k = view.w/clientW();
+    var closeTarget = (!closed && pts.length>=3);   // corner 1 is the close target while drawing
+    handles.innerHTML = pts.map(function(p,i){
+      var del=(i===hoverDel), ct=(closeTarget && i===0), big=del||(ct&&hoverClose);
+      var fill = ct ? '#E8A317' : (del ? '#C43D2E' : '#E8A317');
+      var ring = ct ? '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="'+(9*k)+'" fill="none" stroke="#E8A317" stroke-width="'+(1.4*k)+'" stroke-dasharray="'+(3*k)+' '+(3*k)+'" opacity="0.9"/>' : '';
+      return ring + '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="'+((big?7:5)*k)+'" fill="'+fill+'" stroke="#14181F" stroke-width="'+(1.4*k)+'"/>';
+    }).join('');
+  }
+
+  // Which beacons count as "mine" is driven live by the checkbox list (so toggling
+  // relights the dots), falling back to the server flag on the beacon form (no boxes).
+  var beaconBoxes = Array.prototype.slice.call(document.querySelectorAll('input[name="beacons"]'));
+  function mineSet(){ var s={}; beaconBoxes.forEach(function(cb){ if (cb.checked) s[cb.value]=1; }); return s; }
+
+  function renderRefs(fid){
+    fid = String(fid);
+    var g = document.getElementById('refs'), bg = document.getElementById('beacon-refs'), mine = mineSet();
+    g.innerHTML = REF_STORES.filter(function(s){ return String(s.floor)===fid; }).map(function(s){
+      var body = s.points
+        ? '<polygon points="'+s.points+'" fill="#EEF0F3" fill-opacity="0.9" stroke="#D6DBE1" stroke-width="1" vector-effect="non-scaling-stroke"/>'
+        : '<rect x="'+(s.x-58)+'" y="'+(s.y-36)+'" width="116" height="72" rx="4" fill="#EEF0F3" fill-opacity="0.9" stroke="#D6DBE1"/>';
+      return body + '<text x="'+s.x+'" y="'+(s.y+4)+'" text-anchor="middle" font-family="\'Space Grotesk\',sans-serif" font-size="13" fill="#9AA1AB">'+esc(s.name)+'</text>';
+    }).join('');
+    bg.innerHTML = REF_BEACONS.filter(function(b){ return String(b.floor)===fid; }).map(function(b){
+      var isMine = beaconBoxes.length ? (mine[String(b.id)]===1) : b.mine;
+      return isMine
+        ? '<circle cx="'+b.x+'" cy="'+b.y+'" r="6" fill="#0E7C66" stroke="#FFFFFF" stroke-width="2" vector-effect="non-scaling-stroke"/>'
+        : '<circle cx="'+b.x+'" cy="'+b.y+'" r="3.5" fill="#C99A2E" opacity="0.45"/>';
+    }).join('');
+  }
+  // toggling a beacon in the list relights its dot on the chart
+  beaconBoxes.forEach(function(cb){ cb.addEventListener('change', function(){ renderRefs(curFloor()); }); });
+
+  function redraw(){
+    svg.setAttribute('viewBox', view.x+' '+view.y+' '+view.w+' '+view.h);
+    var k = view.w / clientW();
+    snapPx = stepPx();
+    var right=view.x+view.w, bottom=view.y+view.h;
+    var x0=Math.floor(view.x/snapPx)*snapPx, y0=Math.floor(view.y/snapPx)*snapPx, gl='', rl='';
+    for (var x=x0; x<=right+0.5; x+=snapPx){
+      var n=Math.round(x/snapPx), major=(n%5===0);
+      gl += '<line x1="'+x+'" y1="'+view.y+'" x2="'+x+'" y2="'+bottom+'" stroke="'+(major?'#C4CBD3':'#E4E8EC')+'" stroke-width="'+(major?1.1:0.6)+'" vector-effect="non-scaling-stroke"/>';
+      if (major) rl += '<text x="'+(x+2.5*k)+'" y="'+(view.y+12*k)+'" font-size="'+(10.5*k)+'" fill="#8A929C">'+lblX(x)+'</text>';
+    }
+    for (var y=y0; y<=bottom+0.5; y+=snapPx){
+      var q=Math.round(y/snapPx), maj=(q%5===0);
+      gl += '<line x1="'+view.x+'" y1="'+y+'" x2="'+right+'" y2="'+y+'" stroke="'+(maj?'#C4CBD3':'#E4E8EC')+'" stroke-width="'+(maj?1.1:0.6)+'" vector-effect="non-scaling-stroke"/>';
+      if (maj) rl += '<text x="'+(view.x+3*k)+'" y="'+(y-3*k)+'" font-size="'+(10.5*k)+'" fill="#8A929C">'+lblY(y)+'</text>';
+    }
+    grid.innerHTML=gl; rulers.innerHTML=rl;
+
+    if (kind === 'store'){
+      var pstr = pts.map(function(p){return p[0]+','+p[1];}).join(' ');
+      oLine.setAttribute('points', pstr); oLine.style.display = pts.length>=2 ? '' : 'none';
+      oLine.setAttribute('stroke-dasharray', closed ? 'none' : '');
+      oFill.setAttribute('points', pstr); oFill.style.display = (closed && pts.length>=3) ? '' : 'none';
+      if (closed && pts.length>=3){ oLine.setAttribute('points', pstr + ' ' + pts[0][0] + ',' + pts[0][1]); }
+      closeBtn.style.display = (!closed && pts.length>=3) ? '' : 'none';
+      reopenBtn.style.display = (closed && pts.length>=3) ? '' : 'none';
+      drawHandles();
+    } else {
+      if (bpos){ marker.setAttribute('cx', bpos[0]); marker.setAttribute('cy', bpos[1]); marker.setAttribute('r', 9*k); marker.style.display=''; }
+      else marker.style.display='none';
+    }
+    sync();
+    updateLine(null);
+  }
+
+  function updateLine(cursorPt){
+    var at = '';
+    if (cursorPt){ at = sp.metered ? (' · at X '+m(cursorPt[0]/sp.ppm)+', Y '+m((sp.H-cursorPt[1])/sp.ppm)+' m')
+                                    : (' · at X '+Math.round(cursorPt[0])+', Y '+Math.round(cursorPt[1])+' px'); }
+    if (kind !== 'store'){
+      mLine.textContent = bpos
+        ? ('Placed at ' + (sp.metered ? (m(bpos[0]/sp.ppm)+', '+m((sp.H-bpos[1])/sp.ppm)+' m') : (bpos[0]+', '+bpos[1]+' px')) + at)
+        : ('Click the grid to place the beacon' + at);
+      return;
+    }
+    var u = sp.metered ? 'm' : 'px', u2 = sp.metered ? 'm²' : 'px²';
+    if (closed && pts.length>=3){
+      mLine.textContent = pts.length + ' corners · perimeter ' + m(perim()) + ' ' + u + ' · area ' + m(area()) + ' ' + u2 + ' · closed' + at;
+    } else if (pts.length===0){
+      mLine.textContent = 'Click to drop corner 1' + at;
+    } else {
+      var base = pts.length + (pts.length>1?' corners':' corner') + ' · click to add the next';
+      if (pts.length>=3) base += ' · click corner 1 to close';
+      if (cursorPt && pts.length>=1){ var lp=pts[pts.length-1]; var d=Math.hypot(cursorPt[0]-lp[0], cursorPt[1]-lp[1]); base += ' · wall ' + m(sp.metered ? d/sp.ppm : d) + ' ' + u; }
+      mLine.textContent = base + at;
+    }
+  }
+
+  function showCursor(e){
+    var hint=document.getElementById('splice-hint'), prev=document.getElementById('add-preview'), k=view.w/clientW();
+    if (kind === 'store'){
+      var del = hitHandle(e);
+      var wantClose = (!closed && del===0 && pts.length>=3);
+      if (del !== hoverDel || wantClose !== hoverClose){ hoverDel=del; hoverClose=wantClose; drawHandles(); }
+      if (del >= 0){
+        cross.style.display='none'; hint.style.display='none'; prev.style.display='none'; box.style.cursor='pointer';
+        mLine.textContent = wantClose ? 'Corner 1 · click to CLOSE the footprint'
+          : ('Corner ' + (del+1) + ' · click to delete, drag to move' + (closed && pts.length<=3 ? ' · (an area needs 3)' : ''));
+        return;
+      }
+    }
+    var s = snapPt(cursor(e));
+    cross.style.display='';
+    chv.setAttribute('x1',s[0]); chv.setAttribute('x2',s[0]); chv.setAttribute('y1',view.y); chv.setAttribute('y2',view.y+view.h);
+    chh.setAttribute('y1',s[1]); chh.setAttribute('y2',s[1]); chh.setAttribute('x1',view.x); chh.setAttribute('x2',view.x+view.w);
+    chd.setAttribute('cx',s[0]); chd.setAttribute('cy',s[1]); chd.setAttribute('r',3*k);
+    if (kind !== 'store'){ box.style.cursor='crosshair'; updateLine(s); return; }
+    var ei = closed ? nearestEdge(e, []) : -1;
+    if (ei >= 0){
+      var a=pts[ei], b=pts[(ei+1)%pts.length];
+      hint.setAttribute('x1',a[0]); hint.setAttribute('y1',a[1]); hint.setAttribute('x2',b[0]); hint.setAttribute('y2',b[1]);
+      hint.style.display=''; prev.style.display='none'; box.style.cursor='move';
+      mLine.textContent = 'Wall · drag to move it · click to add a corner on it';
+    } else if (closed && pointInPoly(cursor(e), pts)){
+      hint.style.display='none'; prev.style.display='none'; box.style.cursor='grab';
+      mLine.textContent = 'Inside footprint · drag to move the whole shape';
+    } else if (!closed){
+      box.style.cursor='crosshair'; hint.style.display='none';
+      if (pts.length>=1){ var lp=pts[pts.length-1]; prev.setAttribute('x1',lp[0]); prev.setAttribute('y1',lp[1]); prev.setAttribute('x2',s[0]); prev.setAttribute('y2',s[1]); prev.style.display=''; }
+      else prev.style.display='none';
+      updateLine(s);
+    } else {
+      box.style.cursor='crosshair'; hint.style.display='none'; prev.style.display='none'; updateLine(s);
+    }
+  }
+
+  var down=false, moved=false, sx0=0, sy0=0, vx0=0, vy0=0, dragIdx=-1, dragEdge=-1, dragShape=false, edgeA0, edgeB0, edgeStart, shape0, shapeStart;
+  svg.addEventListener('pointerdown', function(e){
+    down=true; moved=false; sx0=e.clientX; sy0=e.clientY; vx0=view.x; vy0=view.y;
+    dragIdx=-1; dragEdge=-1; dragShape=false;
+    if (kind === 'store'){
+      dragIdx = hitHandle(e);
+      if (dragIdx >= 0){ push(); }
+      else if (closed){
+        var ei = nearestEdge(e, []);
+        if (ei >= 0){ dragEdge=ei; edgeA0=pts[ei].slice(); edgeB0=pts[(ei+1)%pts.length].slice(); edgeStart=cursor(e); push(); }
+        else if (pointInPoly(cursor(e), pts)){ dragShape=true; shape0=pts.map(function(p){return p.slice();}); shapeStart=cursor(e); push(); }
+      }
+    }
+    svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener('pointermove', function(e){
+    if (down){
+      if (Math.abs(e.clientX-sx0)+Math.abs(e.clientY-sy0)>4) moved=true;
+      if (dragIdx >= 0){ if (moved){ pts[dragIdx]=snapPt(cursor(e)); box.style.cursor='grabbing'; redraw(); } return; }
+      if (dragEdge >= 0){
+        if (moved){
+          var c=cursor(e), dx=c[0]-edgeStart[0], dy=c[1]-edgeStart[1];
+          if (snap.checked){ dx=Math.round(dx/snapPx)*snapPx; dy=Math.round(dy/snapPx)*snapPx; }
+          pts[dragEdge]=clampPt(edgeA0[0]+dx, edgeA0[1]+dy);
+          pts[(dragEdge+1)%pts.length]=clampPt(edgeB0[0]+dx, edgeB0[1]+dy);
+          box.style.cursor='grabbing'; redraw();
+        }
+        return;
+      }
+      if (dragShape){
+        if (moved){
+          var c2=cursor(e), dx2=c2[0]-shapeStart[0], dy2=c2[1]-shapeStart[1];
+          if (snap.checked){ dx2=Math.round(dx2/snapPx)*snapPx; dy2=Math.round(dy2/snapPx)*snapPx; }
+          pts = shape0.map(function(p){ return clampPt(p[0]+dx2, p[1]+dy2); });
+          box.style.cursor='grabbing'; redraw();
+        }
+        return;
+      }
+      if (moved){ var k=view.w/clientW(); view.x=vx0-(e.clientX-sx0)*k; view.y=vy0-(e.clientY-sy0)*k; box.style.cursor='grabbing'; redraw(); return; }
+    }
+    showCursor(e);
+  });
+  svg.addEventListener('pointerup', function(e){
+    if (down){
+      if (kind === 'store'){
+        if (dragIdx >= 0){
+          if (!moved){
+            if (!closed && dragIdx===0 && pts.length>=3){ closed=true; }
+            else { pts.splice(dragIdx, 1); if (pts.length<3) closed=false; }
+          }
+        } else if (dragEdge >= 0){
+          if (!moved) pts.splice(dragEdge+1, 0, snapPt(cursor(e)));
+        } else if (!dragShape && !moved && !closed){
+          push(); pts.push(snapPt(cursor(e)));
+        }
+      } else {
+        if (!moved){ bpos = snapPt(cursor(e)); }
+      }
+    }
+    down=false; dragIdx=-1; dragEdge=-1; dragShape=false; hoverDel=-1; hoverClose=false; box.style.cursor='crosshair'; redraw();
+  });
+  svg.addEventListener('pointerleave', function(){
+    cross.style.display='none';
+    document.getElementById('splice-hint').style.display='none';
+    document.getElementById('add-preview').style.display='none';
+    if (hoverDel!==-1 || hoverClose){ hoverDel=-1; hoverClose=false; drawHandles(); }
+    updateLine(null);
+  });
+  document.addEventListener('keydown', function(e){ if (e.key==='Escape'){ undo(); } });
+
+  function zoomAt(cx, cy, f){
+    var nw=Math.max(sp.grid*2, Math.min(sp.W*1.4, view.w*f)), nh=nw*(view.h/view.w);
+    view.x=cx-(cx-view.x)*(nw/view.w); view.y=cy-(cy-view.y)*(nh/view.h); view.w=nw; view.h=nh; redraw();
+  }
+  svg.addEventListener('wheel', function(e){ e.preventDefault(); var u=cursor(e); zoomAt(u[0],u[1], e.deltaY<0?0.85:1/0.85); }, {passive:false});
+  document.getElementById('zoom-in').addEventListener('click', function(){ zoomAt(view.x+view.w/2, view.y+view.h/2, 0.7); });
+  document.getElementById('zoom-out').addEventListener('click', function(){ zoomAt(view.x+view.w/2, view.y+view.h/2, 1/0.7); });
+  document.getElementById('fit').addEventListener('click', fit);
+  if (showRefs) showRefs.addEventListener('change', function(){ document.getElementById('refs').style.display = showRefs.checked ? '' : 'none'; });
+  snap.addEventListener('change', redraw);
+  if (kind === 'store'){
+    document.getElementById('undo').addEventListener('click', undo);
+    document.getElementById('clear').addEventListener('click', function(){ push(); pts=[]; closed=false; hoverDel=-1; hoverClose=false; redraw(); });
+    closeBtn.addEventListener('click', function(){ if (pts.length>=3){ push(); closed=true; redraw(); } });
+    reopenBtn.addEventListener('click', function(){ push(); closed=false; redraw(); });
+  }
+
+  function fit(){ view={x:-sp.pad, y:-sp.pad, w:sp.W+2*sp.pad, h:sp.H+2*sp.pad}; redraw(); }
+  // adopt a floor's coordinate space (no fit/seed — callers own that ordering)
+  function applySpace(space){
+    sp = {W:space.w, H:space.h, ppm:space.ppm, pad:space.pad||0, grid:space.grid, metered:!!space.metered, outline:space.outline||''};
+    box.style.aspectRatio = (sp.W+2*sp.pad) + '/' + (sp.H+2*sp.pad);
+    var bg=document.getElementById('paper-bg');
+    bg.setAttribute('x',-sp.pad); bg.setAttribute('y',-sp.pad); bg.setAttribute('width',sp.W+2*sp.pad); bg.setAttribute('height',sp.H+2*sp.pad);
+    guide.setAttribute('width',sp.W); guide.setAttribute('height',sp.H);
+    if (sp.outline){ fOutline.setAttribute('points', sp.outline); fOutline.style.display=''; } else fOutline.style.display='none';
+    renderRefs(curFloor());
+  }
+
+  // Init
+  applySpace(SPACES[curFloor()] || {w:1000, h:720, ppm:20, pad:0, grid:40, metered:false});
+  if (kind === 'store'){
+    try { pts = JSON.parse(shapeField.value || '[]') || []; } catch (e) { pts = []; }
+    if (!pts.length){ pts = seedSquare(); }
+    closed = pts.length >= 3;
+  } else if (fx.value && (parseInt(fx.value)||0) !== 0){
+    bpos = [parseInt(fx.value), parseInt(fy.value)];
+  }
+  fit();
+
+  // Changing floor is a different coordinate space — adopt it and reseed.
+  if (floorSel) floorSel.addEventListener('change', function(){
+    applySpace(SPACES[curFloor()] || sp);
+    if (kind === 'store'){ pts = seedSquare(); closed = true; hist = []; }
+    else { bpos = null; }
+    hoverDel=-1; hoverClose=false;
+    fit();
+  });
+})();
+
+// Searchable keeper dropdown — only on the store form (#id_keeper). A filter box
+// above the <select> hides non-matching options (native option.hidden).
+(function(){
+  var sel = document.getElementById('id_keeper');
+  if (!sel) return;
+  var box = document.createElement('input');
+  box.type = 'search'; box.placeholder = 'filter keepers…'; box.autocomplete = 'off';
+  box.className = sel.className; box.style.marginBottom = '6px';
+  sel.parentNode.insertBefore(box, sel);
+  var opts = Array.prototype.slice.call(sel.options);
+  box.addEventListener('input', function(){
+    var v = box.value.trim().toLowerCase();
+    opts.forEach(function(o){ o.hidden = !!v && o.text.toLowerCase().indexOf(v) === -1; });
+  });
+})();
+</script>
+{% endblock %}

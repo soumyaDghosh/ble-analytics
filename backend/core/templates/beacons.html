@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Beacons · City Center Directory{% endblock %}
+{% block heading %}Beacons{% endblock %}
+{% block subheading %}<p class="mt-0.5 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Globally-unique advertised IDs</p>{% endblock %}
+{% block toolbar %}<a href="{% url 'beacon_new' %}" class="rounded-md bg-ink px-3 py-2 text-sm font-600 text-white hover:bg-black transition">New beacon</a>{% endblock %}
+{% block content %}
+<div class="overflow-hidden rounded-lg border border-line bg-surface">
+  <table class="w-full text-sm">
+    <thead class="border-b border-line bg-paper/60 font-mono text-[10px] uppercase tracking-[0.18em] text-muted">
+      <tr><th class="px-5 py-3 text-left font-500">Adv ID</th><th class="px-5 py-3 text-left font-500">Type</th>
+      <th class="px-5 py-3 text-left font-500">Store</th><th class="px-5 py-3 text-left font-500">Floor</th>
+      <th class="px-5 py-3 text-left font-500">Tx</th><th class="px-5 py-3 text-left font-500">Position</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for b in beacons %}
+      <tr class="border-b border-line last:border-0 hover:bg-paper/50">
+        <td class="px-5 py-3 font-mono font-500">{{ b.adv_id }}</td>
+        <td class="px-5 py-3 text-muted capitalize">{{ b.beacon_type }}</td>
+        <td class="px-5 py-3 text-muted">{{ b.store.name|default:"—" }}</td>
+        <td class="px-5 py-3 text-muted">{{ b.floor.name }}</td>
+        <td class="px-5 py-3 font-mono text-xs text-muted">{{ b.tx_power }}</td>
+        <td class="px-5 py-3 font-mono text-xs text-muted">{{ b.pos_x }}, {{ b.pos_y }}</td>
+        <td class="px-5 py-3 text-right"><a href="{% url 'beacon_edit' b.id %}" class="font-500 text-ink hover:text-signal">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

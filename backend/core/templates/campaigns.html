@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Campaigns · City Center Directory{% endblock %}
+{% block heading %}Campaigns{% endblock %}
+{% block subheading %}<p class="mt-0.5 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Proximity offers, nested under stores</p>{% endblock %}
+{% block toolbar %}
+  {% if stores %}
+  <select id="store-pick" class="rounded-md border border-line bg-surface px-2.5 py-2 text-sm focus:border-signal focus:outline-none">
+    {% for s in stores %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+  </select>
+  <button onclick="location.href='/stores/'+document.getElementById('store-pick').value+'/campaigns/new'"
+          class="rounded-md bg-ink px-3 py-2 text-sm font-600 text-white hover:bg-black transition">New campaign</button>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="overflow-hidden rounded-lg border border-line bg-surface">
+  <table class="w-full text-sm">
+    <thead class="border-b border-line bg-paper/60 font-mono text-[10px] uppercase tracking-[0.18em] text-muted">
+      <tr>
+        <th class="px-5 py-3 text-left font-500">Campaign</th>
+        <th class="px-5 py-3 text-left font-500">Store</th>
+        <th class="px-5 py-3 text-left font-500">Status</th>
+        <th class="px-5 py-3 text-left font-500">Window</th>
+        <th class="px-5 py-3 text-left font-500">Coupon</th>
+        <th class="px-5 py-3"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in campaigns %}
+      <tr class="border-b border-line last:border-0 hover:bg-paper/50">
+        <td class="px-5 py-3 font-500">{{ c.title }}</td>
+        <td class="px-5 py-3 text-muted">{{ c.store.name }}</td>
+        <td class="px-5 py-3">
+          {% if c.status == 'active' %}<span class="rounded-full bg-active/12 px-2.5 py-1 text-xs font-600 text-active">Active</span>
+          {% elif c.status == 'paused' %}<span class="rounded-full bg-signal/15 px-2.5 py-1 text-xs font-600 text-ink">Paused</span>
+          {% elif c.status == 'completed' %}<span class="rounded-full bg-line px-2.5 py-1 text-xs font-600 text-muted">Completed</span>
+          {% else %}<span class="rounded-full border border-line px-2.5 py-1 text-xs font-600 text-muted">Draft</span>{% endif %}
+        </td>
+        <td class="px-5 py-3 font-mono text-xs text-muted">{{ c.starts_at|date:"j M" }} – {{ c.ends_at|date:"j M" }}</td>
+        <td class="px-5 py-3 font-mono text-xs">{{ c.coupon|default:"—" }}</td>
+        <td class="px-5 py-3 text-right whitespace-nowrap">
+          <a href="{% url 'campaign_edit' c.store_id c.id %}" class="text-sm font-500 text-ink hover:text-signal">Edit</a>
+          <form method="post" action="{% url 'campaign_delete' c.store_id c.id %}" class="inline"
+                onsubmit="return confirm('Delete “{{ c.title|escapejs }}”?')">{% csrf_token %}
+            <button class="ml-3 text-sm text-muted hover:text-ink">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="px-5 py-14 text-center">
+        <p class="font-500">No campaigns yet.</p>
+        <p class="mt-1 text-sm text-muted">Create one to fire a notification when a shopper passes the store's beacon.</p>
+      </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

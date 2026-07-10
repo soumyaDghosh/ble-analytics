@@ -1,0 +1,9 @@
+{% if cur == want %}
+<a href="{% url target %}" class="flex items-center gap-2.5 rounded-md border-l-2 border-signal bg-signal/10 px-3 py-2 font-600 text-ink">
+  <span class="h-1.5 w-1.5 rounded-full bg-signal"></span>{{ label }}
+</a>
+{% else %}
+<a href="{% url target %}" class="flex items-center gap-2.5 rounded-md border-l-2 border-transparent px-3 py-2 text-muted hover:bg-paper hover:text-ink transition">
+  <span class="h-1.5 w-1.5 rounded-full bg-line"></span>{{ label }}
+</a>
+{% endif %}

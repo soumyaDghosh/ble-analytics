@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{% if obj %}Mall settings{% else %}Set up your mall{% endif %} · Directory{% endblock %}
+{% block heading %}{% if obj %}Mall settings{% else %}Set up your mall{% endif %}{% endblock %}
+{% block subheading %}<p class="mt-0.5 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">{% if obj %}Name &amp; address shown across the directory{% else %}Start here — every floor, store &amp; beacon lives under one mall{% endif %}</p>{% endblock %}
+
+{% block content %}
+<form method="post" class="max-w-md space-y-4">
+  {% csrf_token %}
+  {% for field in form.visible_fields %}
+  <div>
+    <label class="mb-1 block text-sm font-500">{{ field.label }}</label>
+    {{ field }}
+    {% if field.help_text %}<p class="mt-1 text-xs text-muted">{{ field.help_text }}</p>{% endif %}
+    <div class="text-sm text-[#C43D2E]">{{ field.errors }}</div>
+  </div>
+  {% endfor %}
+  {{ form.non_field_errors }}
+  <div class="flex items-center gap-3 pt-1">
+    <button class="rounded-md bg-ink px-4 py-2.5 text-sm font-600 text-white hover:bg-black transition">{% if obj %}Save{% else %}Create mall &amp; continue{% endif %}</button>
+    {% if obj %}<a href="{% url 'dashboard' %}" class="text-sm text-muted hover:text-ink">Cancel</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

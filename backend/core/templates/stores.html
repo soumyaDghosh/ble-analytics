@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Stores · City Center Directory{% endblock %}
+{% block heading %}Stores{% endblock %}
+{% block toolbar %}<a href="{% url 'store_new' %}" class="rounded-md bg-ink px-3 py-2 text-sm font-600 text-white hover:bg-black transition">New store</a>{% endblock %}
+{% block content %}
+<div class="mb-4 flex items-center gap-3">
+  <input id="store-search" type="search" placeholder="Search store or keeper…" autocomplete="off"
+         class="w-72 max-w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal/20">
+  <span id="store-count" class="font-mono text-[11px] uppercase tracking-wider text-muted"></span>
+</div>
+<div class="overflow-hidden rounded-lg border border-line bg-surface">
+  <table class="w-full text-sm">
+    <thead class="border-b border-line bg-paper/60 font-mono text-[10px] uppercase tracking-[0.18em] text-muted">
+      <tr><th class="px-5 py-3 text-left font-500">Name</th><th class="px-5 py-3 text-left font-500">Category</th>
+      <th class="px-5 py-3 text-left font-500">Floor</th><th class="px-5 py-3 text-left font-500">Keeper</th>
+      <th class="px-5 py-3 text-left font-500">Beacons</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for s in stores %}
+      <tr data-k="{{ s.name|lower }} {{ s.category|lower }} {{ s.keeper.username|default:''|lower }}" class="border-b border-line last:border-0 hover:bg-paper/50">
+        <td class="px-5 py-3 font-500">{{ s.name }}</td>
+        <td class="px-5 py-3 text-muted">{{ s.category }}</td>
+        <td class="px-5 py-3 text-muted">{{ s.floor.name }}</td>
+        <td class="px-5 py-3">{% if s.keeper %}<span class="font-500">{{ s.keeper.username }}</span>{% else %}<span class="text-muted">— unassigned —</span>{% endif %}</td>
+        <td class="px-5 py-3 font-mono text-xs {% if s.beacon_n %}text-ink{% else %}text-muted{% endif %}">{{ s.beacon_n }}{% if not s.beacon_n %} · none{% endif %}</td>
+        <td class="px-5 py-3 text-right"><a href="{% url 'store_edit' s.id %}" class="font-500 text-ink hover:text-signal">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+// Client-side row filter over store name / category / keeper (data-k). No server round-trip.
+(function () {
+  var q = document.getElementById('store-search');
+  var rows = Array.prototype.slice.call(document.querySelectorAll('tbody tr[data-k]'));
+  var count = document.getElementById('store-count');
+  function tally() {
+    var shown = rows.filter(function (r) { return r.style.display !== 'none'; }).length;
+    count.textContent = shown + ' / ' + rows.length;
+  }
+  q.addEventListener('input', function () {
+    var v = q.value.trim().toLowerCase();
+    rows.forEach(function (r) {
+      r.style.display = (!v || r.dataset.k.indexOf(v) > -1) ? '' : 'none';
+    });
+    tally();
+  });
+  tally();
+})();
+</script>
+{% endblock %}

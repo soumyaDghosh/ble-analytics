@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Floors · City Center Directory{% endblock %}
+{% block heading %}Floors{% endblock %}
+{% block subheading %}<p class="mt-0.5 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Floor size + boundary, drawn on graph paper</p>{% endblock %}
+{% block toolbar %}<a href="{% url 'floor_new' %}" class="rounded-md bg-ink px-3 py-2 text-sm font-600 text-white hover:bg-black transition">New floor</a>{% endblock %}
+{% block content %}
+<div class="overflow-hidden rounded-lg border border-line bg-surface">
+  <table class="w-full text-sm">
+    <thead class="border-b border-line bg-paper/60 font-mono text-[10px] uppercase tracking-[0.18em] text-muted">
+      <tr><th class="px-5 py-3 text-left font-500">Name</th><th class="px-5 py-3 text-left font-500">#</th>
+      <th class="px-5 py-3 text-left font-500">Size</th><th class="px-5 py-3 text-left font-500">Boundary</th>
+      <th class="px-5 py-3 text-left font-500">Stores</th><th class="px-5 py-3 text-left font-500">Beacons</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for f in floors %}
+      <tr class="border-b border-line last:border-0 hover:bg-paper/50">
+        <td class="px-5 py-3 font-500">{{ f.name }}</td>
+        <td class="px-5 py-3 text-muted font-mono">{{ f.number }}</td>
+        <td class="px-5 py-3 font-mono text-xs {% if not f.width_m %}text-muted{% endif %}">{% if f.width_m %}{{ f.width_m }} × {{ f.height_m }} m{% else %}— not set —{% endif %}</td>
+        <td class="px-5 py-3 text-xs">{% if f.outline %}<span class="text-active font-500">✓ drawn</span>{% else %}<span class="text-muted">default rectangle</span>{% endif %}</td>
+        <td class="px-5 py-3 font-mono text-xs">{{ f.store_n }}</td>
+        <td class="px-5 py-3 font-mono text-xs">{{ f.beacon_n }}</td>
+        <td class="px-5 py-3 text-right"><a href="{% url 'floor_edit' f.id %}" class="font-500 text-ink hover:text-signal">Edit</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="px-5 py-12 text-center text-muted">No floors yet. <a href="{% url 'floor_new' %}" class="text-ink underline">Add one</a>.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

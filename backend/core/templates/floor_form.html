@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% block title %}{% if obj %}Edit{% else %}New{% endif %} floor · City Center Directory{% endblock %}
+{% block heading %}{% if obj %}Edit{% else %}New{% endif %} floor{% endblock %}
+{% block subheading %}<p class="mt-0.5 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Set the size, then trace the boundary on the graph paper</p>{% endblock %}
+
+{% block content %}
+<form method="post" class="grid gap-6 lg:grid-cols-[1fr_300px]">
+  {% csrf_token %}
+  {% for h in form.hidden_fields %}{{ h }}{% endfor %}
+
+  <!-- Graph paper -->
+  <div>
+    <div id="paper-box" class="relative w-full overflow-hidden rounded-lg border border-line" style="aspect-ratio:1000/720; background:#FBFCFD; touch-action:none; cursor:crosshair">
+      <svg id="paper" viewBox="0 0 1000 720" class="absolute inset-0 h-full w-full" font-family="'IBM Plex Mono', monospace">
+        <rect id="paper-bg" x="0" y="0" width="1000" height="720" fill="#FBFCFD"/>
+        <!-- the declared W×H floor area, highlighted; grid extends past it for curving out -->
+        <rect id="floor-guide" x="0" y="0" width="1000" height="720" fill="#0E7C66" fill-opacity="0.05"
+              stroke="#0E7C66" stroke-opacity="0.4" stroke-width="1.4" stroke-dasharray="7 5" vector-effect="non-scaling-stroke"/>
+        <g id="grid"></g>
+        <g id="refs" style="display:none">
+          {% for s in stores %}
+          <rect x="{{ s.pos_x|add:'-40' }}" y="{{ s.pos_y|add:'-26' }}" width="80" height="52" rx="3"
+                fill="#EEF0F3" stroke="#D6DBE1" stroke-width="0.75" opacity="0.85"/>
+          {% endfor %}
+        </g>
+        <!-- fill appears only once the outline is closed; open trace stays hollow -->
+        <polygon id="outline-fill" fill="#0E7C66" fill-opacity="0.06" stroke="none" style="display:none"/>
+        <!-- the walls: an OPEN polyline while drawing, closed to the first corner once finished -->
+        <polyline id="outline-line" fill="none" stroke="#0E7C66" stroke-width="1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke" style="display:none"/>
+        <!-- rubber-band from the last corner to the cursor: the wall a click will draw -->
+        <line id="add-preview" stroke="#E8A317" stroke-width="1.4" stroke-dasharray="5 4" vector-effect="non-scaling-stroke" opacity="0.8" style="display:none"/>
+        <!-- highlights the wall under the cursor: click it to insert a corner into that wall -->
+        <line id="splice-hint" stroke="#E8A317" stroke-width="3.4" stroke-linecap="round" vector-effect="non-scaling-stroke" opacity="0.85" style="display:none"/>
+        <g id="handles"></g>
+        <g id="rulers"></g>
+        <g id="crosshair" style="display:none">
+          <line id="ch-v" stroke="#E8A317" stroke-width="1" vector-effect="non-scaling-stroke" opacity="0.8"/>
+          <line id="ch-h" stroke="#E8A317" stroke-width="1" vector-effect="non-scaling-stroke" opacity="0.8"/>
+          <circle id="ch-dot" r="3" fill="#E8A317"/>
+        </g>
+      </svg>
+    </div>
+
+    <!-- toolbar -->
+    <div class="mt-2 flex flex-wrap items-center gap-2">
+      <div class="inline-flex rounded-md border border-line bg-surface">
+        <button type="button" id="zoom-out" class="px-3 py-1.5 text-sm text-muted hover:text-ink">−</button>
+        <button type="button" id="zoom-in" class="border-l border-line px-3 py-1.5 text-sm text-muted hover:text-ink">+</button>
+        <button type="button" id="fit" class="border-l border-line px-3 py-1.5 text-sm text-muted hover:text-ink">Fit</button>
+      </div>
+      <button type="button" id="close-btn" class="rounded-md border border-signal bg-surface px-3 py-1.5 text-sm font-600 text-signal hover:bg-signal/10" style="display:none">Close boundary</button>
+      <button type="button" id="reopen-btn" class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-muted hover:text-ink" style="display:none">Reopen</button>
+      <button type="button" id="undo" class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-muted hover:text-ink">Undo</button>
+      <button type="button" id="clear" class="rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-muted hover:text-ink">Clear</button>
+      <label class="inline-flex cursor-pointer items-center gap-1.5 text-sm text-muted">
+        <input type="checkbox" id="snap" checked class="accent-signal"> snap
+      </label>
+      <label class="inline-flex cursor-pointer items-center gap-1.5 text-sm text-muted">
+        <input type="checkbox" id="show-refs" class="accent-signal"> show stores
+      </label>
+    </div>
+
+    <!-- one contextual readout line -->
+    <div class="mt-2 rounded-md border border-line bg-surface px-4 py-2.5">
+      <p id="measure-line" class="font-display text-base font-600 text-ink">Set the size, then click to drop corner&nbsp;1</p>
+      <p class="mt-0.5 font-mono text-[11px] text-muted"><span id="m-grid">grid —</span> · <span id="m-pts">0</span> corners · <b>drawing:</b> click empty grid to add the next corner · click corner&nbsp;1 (or “Close boundary”) to finish · <b>after closing:</b> drag a corner or wall to move it · click a wall to insert a corner · click a corner to delete · Reopen to keep tracing · drag empty to pan · scroll to zoom · origin bottom-left (Y up)</p>
+      <div class="mt-1 text-sm text-[#C43D2E]">{{ form.outline_json.errors }}</div>
+    </div>
+  </div>
+
+  <!-- Fields -->
+  <div class="space-y-4">
+    {% for field in form.visible_fields %}
+    <div>
+      <label class="mb-1 block text-sm font-500">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<p class="mt-1 text-xs text-muted">{{ field.help_text }}</p>{% endif %}
+      {{ field.errors }}
+    </div>
+    {% endfor %}
+    {{ form.non_field_errors }}
+    <div class="flex items-center gap-3 pt-1">
+      <button class="rounded-md bg-ink px-4 py-2.5 text-sm font-600 text-white hover:bg-black transition">Save floor</button>
+      <a href="{% url 'floors' %}" class="text-sm text-muted hover:text-ink">Cancel</a>
+    </div>
+  </div>
+</form>
+
+<script>
+(function(){
+  var box = document.getElementById('paper-box'), svg = document.getElementById('paper');
+  var wIn = document.getElementById('id_width_m'), hIn = document.getElementById('id_height_m');
+  var field = document.getElementById('id_outline_json'), snap = document.getElementById('snap'), showRefs = document.getElementById('show-refs');
+  var grid = document.getElementById('grid'), rulers = document.getElementById('rulers'), handles = document.getElementById('handles');
+  var oFill = document.getElementById('outline-fill'), oLine = document.getElementById('outline-line');
+  var closeBtn = document.getElementById('close-btn'), reopenBtn = document.getElementById('reopen-btn');
+  var cross = document.getElementById('crosshair'), chv = document.getElementById('ch-v'), chh = document.getElementById('ch-h'), chd = document.getElementById('ch-dot');
+  var mLine = document.getElementById('measure-line'), mGrid = document.getElementById('m-grid'), mPts = document.getElementById('m-pts');
+  var STEPS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
+
+  var guide = document.getElementById('floor-guide');
+  var sp = {W:1000, H:720, ppm:20, pad:60};
+  var view = {x:0, y:0, w:1000, h:720};
+  var pts = [], snapPx = 20, hoverDel = -1, hoverClose = false, hist = [];
+  try { pts = JSON.parse(field.value || '[]') || []; } catch (e) { pts = []; }
+  var closed = pts.length >= 3;                       // a saved outline reloads already closed
+
+  function m(v){ return (Math.round(v*100)/100).toString(); }
+  function sync(){ field.value = JSON.stringify(pts); }
+  function push(){ hist.push(JSON.stringify({p:pts, c:closed})); if (hist.length > 60) hist.shift(); }
+  function undo(){ if (hist.length){ var s=JSON.parse(hist.pop()); pts=s.p; closed=!!s.c; hoverDel=-1; hoverClose=false; redraw(); } }
+  function space(){
+    var wm = parseFloat(wIn && wIn.value) || 40, hm = parseFloat(hIn && hIn.value) || 30;
+    var ppm = 20;                                   // fixed → every metre is a whole pixel (clean metrics)
+    var pad = Math.max(2, Math.round(0.1*Math.max(wm, hm))) * ppm;   // ~10% breathing room to curve out
+    sp = {W: Math.round(wm*ppm), H: Math.round(hm*ppm), ppm: ppm, pad: pad};
+    box.style.aspectRatio = (sp.W+2*pad) + '/' + (sp.H+2*pad);
+    var bg = document.getElementById('paper-bg');
+    bg.setAttribute('x', -pad); bg.setAttribute('y', -pad);
+    bg.setAttribute('width', sp.W+2*pad); bg.setAttribute('height', sp.H+2*pad);
+    guide.setAttribute('width', sp.W); guide.setAttribute('height', sp.H);
+  }
+  function fit(){ view = {x:-sp.pad, y:-sp.pad, w:sp.W+2*sp.pad, h:sp.H+2*sp.pad}; redraw(); }
+  function clientW(){ return box.clientWidth || 760; }
+  function chooseStep(){
+    var screenPerM = sp.ppm / (view.w / clientW());
+    for (var i=0;i<STEPS.length;i++) if (STEPS[i]*screenPerM >= 18) return STEPS[i];
+    return STEPS[STEPS.length-1];
+  }
+  function perim(){
+    var d=0; for (var i=0;i<pts.length;i++){ var a=pts[i], b=pts[(i+1)%pts.length]; d+=Math.hypot(b[0]-a[0], b[1]-a[1]); }
+    return d/sp.ppm;
+  }
+  function area(){
+    var s=0; for (var i=0;i<pts.length;i++){ var a=pts[i], b=pts[(i+1)%pts.length]; s+=a[0]*b[1]-b[0]*a[1]; }
+    return Math.abs(s)/2/(sp.ppm*sp.ppm);
+  }
+  // distance from point p to segment a-b — used to slot a new corner into the nearest wall
+  function segDist(p,a,b){
+    var vx=b[0]-a[0], vy=b[1]-a[1], L=vx*vx+vy*vy;
+    var t = L ? Math.max(0, Math.min(1, ((p[0]-a[0])*vx+(p[1]-a[1])*vy)/L)) : 0;
+    return Math.hypot(p[0]-(a[0]+t*vx), p[1]-(a[1]+t*vy));
+  }
+  // nearest polygon wall to a screen point (px), skipping excluded edge indices.
+  // Used to detect when the cursor is over a wall so a click inserts a corner INTO
+  // that specific wall — the user picks the wall, so there is no ambiguous guessing.
+  function nearestEdge(e, excl){
+    var bi=-1, bd=14, n=pts.length;   // within 14 screen px counts as "on the wall"
+    for (var i=0;i<n;i++){
+      if (excl.indexOf(i) >= 0) continue;
+      var d = segDist([e.clientX, e.clientY], screenOf(pts[i]), screenOf(pts[(i+1)%n]));
+      if (d<bd){ bd=d; bi=i; }
+    }
+    return bi;
+  }
+  function drawHandles(){
+    var k = view.w/clientW();
+    // while drawing, corner 1 is the amber "click here to close" target
+    var closeTarget = (!closed && pts.length>=3);
+    handles.innerHTML = pts.map(function(p,i){
+      var del = (i===hoverDel);
+      var ct = (closeTarget && i===0);
+      var big = del || (ct && hoverClose);
+      var fill = ct ? '#E8A317' : (del ? '#C43D2E' : '#0E7C66');
+      var ring = ct ? '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="'+(9*k)+'" fill="none" stroke="#E8A317" stroke-width="'+(1.4*k)+'" stroke-dasharray="'+(3*k)+' '+(3*k)+'" opacity="0.9"/>' : '';
+      return ring + '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="'+((big?7:5)*k)+'" fill="'+fill+'" stroke="#FFFFFF" stroke-width="'+(1.6*k)+'"/>';
+    }).join('');
+  }
+
+  function redraw(){
+    svg.setAttribute('viewBox', view.x+' '+view.y+' '+view.w+' '+view.h);
+    var k = view.w / clientW();
+    var g = chooseStep(), stepPx = g*sp.ppm;
+    snapPx = stepPx;
+    mGrid.textContent = 'grid ' + m(g) + ' m';
+    mPts.textContent = pts.length;
+    // grid + rulers
+    var gl='', rl='', x0=Math.floor(view.x/stepPx)*stepPx, y0=Math.floor(view.y/stepPx)*stepPx;
+    var right=view.x+view.w, bottom=view.y+view.h;
+    for (var x=x0; x<=right+0.5; x+=stepPx){
+      var n=Math.round(x/stepPx), major=(n%5===0);
+      gl += '<line x1="'+x+'" y1="'+view.y+'" x2="'+x+'" y2="'+bottom+'" stroke="'+(major?'#C4CBD3':'#E4E8EC')+'" stroke-width="'+(major?1.1:0.6)+'" vector-effect="non-scaling-stroke"/>';
+      if (major) rl += '<text x="'+(x+2.5*k)+'" y="'+(view.y+12*k)+'" font-size="'+(10.5*k)+'" fill="#8A929C">'+m(x/sp.ppm)+'</text>';
+    }
+    for (var y=y0; y<=bottom+0.5; y+=stepPx){
+      var q=Math.round(y/stepPx), maj=(q%5===0);
+      gl += '<line x1="'+view.x+'" y1="'+y+'" x2="'+right+'" y2="'+y+'" stroke="'+(maj?'#C4CBD3':'#E4E8EC')+'" stroke-width="'+(maj?1.1:0.6)+'" vector-effect="non-scaling-stroke"/>';
+      if (maj) rl += '<text x="'+(view.x+3*k)+'" y="'+(y-3*k)+'" font-size="'+(10.5*k)+'" fill="#8A929C">'+m((sp.H-y)/sp.ppm)+'</text>';
+    }
+    grid.innerHTML=gl; rulers.innerHTML=rl;
+    var pstr = pts.map(function(p){return p[0]+','+p[1];}).join(' ');
+    oLine.setAttribute('points', pstr);              // open trace while drawing…
+    oLine.style.display = pts.length>=2 ? '' : 'none';
+    oLine.setAttribute('stroke-dasharray', closed ? 'none' : '');
+    oFill.setAttribute('points', pstr);              // …fill only once closed
+    oFill.style.display = (closed && pts.length>=3) ? '' : 'none';
+    // when closed, the polyline must also draw the wall back to corner 1
+    if (closed && pts.length>=3){ oLine.setAttribute('points', pstr + ' ' + pts[0][0] + ',' + pts[0][1]); }
+    closeBtn.style.display = (!closed && pts.length>=3) ? '' : 'none';
+    reopenBtn.style.display = (closed && pts.length>=3) ? '' : 'none';
+    drawHandles();
+    sync();
+    updateLine(null);
+  }
+
+  function updateLine(cursorPt){
+    var at = cursorPt ? ' · at X ' + m(cursorPt[0]/sp.ppm) + ', Y ' + m((sp.H-cursorPt[1])/sp.ppm) + ' m' : '';
+    if (closed && pts.length>=3){
+      mLine.textContent = pts.length + ' corners · perimeter ' + m(perim()) + ' m · area ' + m(area()) + ' m² · closed' + at;
+    } else if (pts.length===0){
+      mLine.textContent = 'Click to drop corner 1' + at;
+    } else {
+      var base = pts.length + (pts.length>1?' corners':' corner') + ' · click to add the next';
+      if (pts.length>=3) base += ' · click corner 1 to close';
+      // live length of the wall the next click would draw
+      if (cursorPt && pts.length>=1){ var lp=pts[pts.length-1]; base += ' · wall ' + m(Math.hypot(cursorPt[0]-lp[0], cursorPt[1]-lp[1])/sp.ppm) + ' m'; }
+      mLine.textContent = base + at;
+    }
+  }
+
+  function cursor(e){
+    var r = box.getBoundingClientRect();
+    return [view.x + (e.clientX-r.left)/r.width*view.w, view.y + (e.clientY-r.top)/r.height*view.h];
+  }
+  function clampPt(x,y){ return [Math.max(-sp.pad,Math.min(sp.W+sp.pad,Math.round(x))), Math.max(-sp.pad,Math.min(sp.H+sp.pad,Math.round(y)))]; }
+  function snapPt(u){
+    var x=u[0], y=u[1];
+    if (snap.checked){ x=Math.round(x/snapPx)*snapPx; y=Math.round(y/snapPx)*snapPx; }  // nearest grid node
+    return clampPt(x, y);
+  }
+  function screenOf(p){ var r=box.getBoundingClientRect(); return [r.left+(p[0]-view.x)/view.w*r.width, r.top+(p[1]-view.y)/view.h*r.height]; }
+  // nearest existing corner under the pointer (screen space) — clicking it deletes it
+  function hitHandle(e){
+    var bi=-1, bd=12;
+    for (var i=0;i<pts.length;i++){ var s=screenOf(pts[i]), d=Math.hypot(e.clientX-s[0], e.clientY-s[1]); if (d<bd){ bd=d; bi=i; } }
+    return bi;
+  }
+
+  function showCursor(e){
+    var del = hitHandle(e), hint=document.getElementById('splice-hint'), prev=document.getElementById('add-preview');
+    var wantClose = (!closed && del===0 && pts.length>=3);   // hovering corner 1 mid-draw = close target
+    if (del !== hoverDel || wantClose !== hoverClose){ hoverDel = del; hoverClose = wantClose; drawHandles(); }
+    if (del >= 0){                                   // over a corner
+      cross.style.display='none'; hint.style.display='none'; prev.style.display='none'; box.style.cursor='pointer';
+      if (wantClose){ mLine.textContent = 'Corner 1 · click to CLOSE the boundary'; }
+      else { mLine.textContent = 'Corner ' + (del+1) + ' · click to delete, drag to move' + (closed && pts.length<=3 ? ' · (an area needs 3)' : ''); }
+      return;
+    }
+    var s = snapPt(cursor(e)), k = view.w/clientW();
+    cross.style.display='';
+    chv.setAttribute('x1',s[0]); chv.setAttribute('x2',s[0]); chv.setAttribute('y1',view.y); chv.setAttribute('y2',view.y+view.h);
+    chh.setAttribute('y1',s[1]); chh.setAttribute('y2',s[1]); chh.setAttribute('x1',view.x); chh.setAttribute('x2',view.x+view.w);
+    chd.setAttribute('cx',s[0]); chd.setAttribute('cy',s[1]); chd.setAttribute('r',3*k);
+    // wall hover (insert/drag) is EDIT-phase only — never hijacks the draw
+    var ei = closed ? nearestEdge(e, []) : -1;
+    if (ei >= 0){                                    // over a wall → click inserts a corner, drag shifts the wall
+      var a=pts[ei], b=pts[(ei+1)%pts.length];
+      hint.setAttribute('x1',a[0]); hint.setAttribute('y1',a[1]); hint.setAttribute('x2',b[0]); hint.setAttribute('y2',b[1]);
+      hint.style.display=''; prev.style.display='none'; box.style.cursor='move';
+      mLine.textContent = 'Wall · drag to move it · click to add a corner on it';
+    } else if (!closed){                             // drawing → rubber-band from the last corner
+      box.style.cursor='crosshair'; hint.style.display='none';
+      if (pts.length>=1){
+        var lp=pts[pts.length-1];
+        prev.setAttribute('x1',lp[0]); prev.setAttribute('y1',lp[1]); prev.setAttribute('x2',s[0]); prev.setAttribute('y2',s[1]);
+        prev.style.display='';
+      } else { prev.style.display='none'; }
+      updateLine(s);
+    } else {                                         // closed, empty space → nothing to add here
+      box.style.cursor='crosshair'; hint.style.display='none'; prev.style.display='none';
+      updateLine(s);
+    }
+  }
+
+  // interaction: click empty = add corner in order (live preview) / click a wall = insert a
+  // corner into it / click a corner = delete / drag a corner = move / drag empty = pan / wheel = zoom
+  var down=false, moved=false, sx0=0, sy0=0, vx0=0, vy0=0, dragIdx=-1, dragEdge=-1, edgeA0, edgeB0, edgeStart;
+  svg.addEventListener('pointerdown', function(e){
+    down=true; moved=false; sx0=e.clientX; sy0=e.clientY; vx0=view.x; vy0=view.y;
+    dragIdx = hitHandle(e); dragEdge = -1;
+    if (dragIdx >= 0){ push(); }                     // about to move / delete / close on this corner
+    else if (closed){                                 // edit phase only — grabbing a wall
+      var ei = nearestEdge(e, []);
+      if (ei >= 0){ dragEdge = ei; edgeA0 = pts[ei].slice(); edgeB0 = pts[(ei+1)%pts.length].slice(); edgeStart = cursor(e); push(); }
+    }
+    svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener('pointermove', function(e){
+    if (down){
+      if (Math.abs(e.clientX-sx0)+Math.abs(e.clientY-sy0)>4) moved=true;
+      if (dragIdx >= 0){                             // dragging a corner = move it (no reordering)
+        if (moved){ pts[dragIdx] = snapPt(cursor(e)); box.style.cursor='grabbing'; redraw(); }
+        return;
+      }
+      if (dragEdge >= 0){                            // dragging a wall = shift both its endpoints together
+        if (moved){
+          var c=cursor(e), dx=c[0]-edgeStart[0], dy=c[1]-edgeStart[1];
+          if (snap.checked){ dx=Math.round(dx/snapPx)*snapPx; dy=Math.round(dy/snapPx)*snapPx; }  // move by whole grid steps
+          pts[dragEdge] = clampPt(edgeA0[0]+dx, edgeA0[1]+dy);
+          pts[(dragEdge+1)%pts.length] = clampPt(edgeB0[0]+dx, edgeB0[1]+dy);
+          box.style.cursor='grabbing'; redraw();
+        }
+        return;
+      }
+      if (moved){                                    // panning empty space
+        var k=view.w/clientW(); view.x=vx0-(e.clientX-sx0)*k; view.y=vy0-(e.clientY-sy0)*k;
+        box.style.cursor='grabbing'; redraw(); return;
+      }
+    }
+    showCursor(e);
+  });
+  svg.addEventListener('pointerup', function(e){
+    if (down){
+      if (dragIdx >= 0){
+        if (!moved){
+          if (!closed && dragIdx===0 && pts.length>=3){ closed=true; }   // click corner 1 mid-draw = close
+          else { pts.splice(dragIdx, 1); if (pts.length<3) closed=false; }  // click a corner = delete (reopens if <3)
+        }
+        // else: dragged in place, pts[dragIdx] already updated
+      } else if (dragEdge >= 0){
+        if (!moved) pts.splice(dragEdge+1, 0, snapPt(cursor(e)));  // click a wall (no drag) = insert a corner into it
+        // else: wall dragged, both endpoints already updated
+      } else if (!moved && !closed){
+        push(); pts.push(snapPt(cursor(e)));          // drawing: click empty = extend from the last corner
+      }
+    }
+    down=false; dragIdx=-1; dragEdge=-1; hoverDel=-1; hoverClose=false; box.style.cursor='crosshair'; redraw();
+  });
+  svg.addEventListener('pointerleave', function(){
+    cross.style.display='none';
+    document.getElementById('splice-hint').style.display='none';
+    document.getElementById('add-preview').style.display='none';
+    if (hoverDel!==-1 || hoverClose){ hoverDel=-1; hoverClose=false; drawHandles(); }
+    updateLine(null);
+  });
+  document.addEventListener('keydown', function(e){ if (e.key==='Escape'){ undo(); } });
+
+  function zoomAt(cx, cy, f){
+    var nw=Math.max(sp.ppm*2, Math.min(sp.W*1.2, view.w*f)), nh=nw*(view.h/view.w);
+    view.x=cx-(cx-view.x)*(nw/view.w); view.y=cy-(cy-view.y)*(nh/view.h); view.w=nw; view.h=nh; redraw();
+  }
+  svg.addEventListener('wheel', function(e){ e.preventDefault(); var u=cursor(e); zoomAt(u[0],u[1], e.deltaY<0?0.85:1/0.85); }, {passive:false});
+  document.getElementById('zoom-in').addEventListener('click', function(){ zoomAt(view.x+view.w/2, view.y+view.h/2, 0.7); });
+  document.getElementById('zoom-out').addEventListener('click', function(){ zoomAt(view.x+view.w/2, view.y+view.h/2, 1/0.7); });
+  document.getElementById('fit').addEventListener('click', fit);
+  document.getElementById('undo').addEventListener('click', undo);
+  document.getElementById('clear').addEventListener('click', function(){ push(); pts=[]; closed=false; hoverDel=-1; hoverClose=false; redraw(); });
+  closeBtn.addEventListener('click', function(){ if (pts.length>=3){ push(); closed=true; redraw(); } });
+  reopenBtn.addEventListener('click', function(){ push(); closed=false; redraw(); });   // keep tracing / edit corners freely
+  snap.addEventListener('change', redraw);
+  showRefs.addEventListener('change', function(){ document.getElementById('refs').style.display = showRefs.checked ? '' : 'none'; });
+  function onDims(){ pts=[]; closed=false; hist=[]; hoverDel=-1; hoverClose=false; space(); fit(); }
+  if (wIn) wIn.addEventListener('input', onDims);
+  if (hIn) hIn.addEventListener('input', onDims);
+
+  space(); fit();
+})();
+</script>
+{% endblock %}

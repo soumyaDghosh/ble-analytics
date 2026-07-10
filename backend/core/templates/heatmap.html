@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Footfall map · City Center Directory{% endblock %}
+{% block heading %}Footfall map{% endblock %}
+{% block subheading %}<p class="mt-0.5 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">{{ mall.name }} · footfall by closest approach · dwell by visit length · focus by dwell distance</p>{% endblock %}
+
+{% block content %}
+<div id="stage" hx-target="#stage" hx-swap="innerHTML">
+  {% include "_plan.html" %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Pan/zoom the board by CSS-transforming the SVG. State lives here (not in the
+// swapped fragment) and is reapplied after each 5s htmx poll so the view holds.
+// ponytail: ~40 lines of viewBox transform; reach for svg-pan-zoom only if
+// features (minimap, momentum, pinch clusters) actually grow.
+(function () {
+  var scale = 1, tx = 0, ty = 0, drag = false, sx = 0, sy = 0;
+  var stage = document.getElementById('stage');
+  if (!stage) return;
+  function svg() { return stage.querySelector('svg'); }
+  function apply() {
+    var s = svg(); if (!s) return;
+    s.style.transformOrigin = '0 0';
+    s.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+  }
+  // Only act when the pointer is on the board SVG — never over the floor/range/
+  // view buttons, which live inside #stage too. (Capturing the pointer on those
+  // would swallow their click and freeze the controls.)
+  function onBoard(e) { return e.target.closest && e.target.closest('#board-svg'); }
+  window.boardResetView = function () { scale = 1; tx = 0; ty = 0; apply(); };
+  stage.addEventListener('wheel', function (e) {
+    if (!onBoard(e)) return;
+    e.preventDefault();
+    var r = stage.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+    var ns = Math.min(6, Math.max(1, scale * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+    tx = mx - (mx - tx) * (ns / scale);
+    ty = my - (my - ty) * (ns / scale);
+    scale = ns;
+    if (scale === 1) { tx = 0; ty = 0; }
+    apply();
+  }, { passive: false });
+  stage.addEventListener('pointerdown', function (e) {
+    if (!onBoard(e)) return;
+    drag = true; sx = e.clientX - tx; sy = e.clientY - ty;
+    stage.setPointerCapture(e.pointerId); stage.style.cursor = 'grabbing';
+  });
+  stage.addEventListener('pointermove', function (e) {
+    if (!drag) return; tx = e.clientX - sx; ty = e.clientY - sy; apply();
+  });
+  function endDrag() { drag = false; stage.style.cursor = ''; }
+  stage.addEventListener('pointerup', endDrag);
+  stage.addEventListener('pointercancel', endDrag);
+  document.body.addEventListener('htmx:afterSettle', function (e) {
+    if (e.target && e.target.id === 'stage') apply();
+  });
+})();
+</script>
+{% endblock %}

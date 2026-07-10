@@ -1,0 +1,147 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}City Center · Directory{% endblock %}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: {
+          paper: '#ECEEF0', ink: '#14181F', signal: '#E8A317', active: '#0E7C66',
+          line: '#D3D8DE', surface: '#FFFFFF', muted: '#6B7480',
+        },
+        fontFamily: {
+          display: ['"Space Grotesk"', 'sans-serif'],
+          sans: ['"Hanken Grotesk"', 'sans-serif'],
+          mono: ['"IBM Plex Mono"', 'monospace'],
+        },
+        fontWeight: { 500: '500', 600: '600', 700: '700' },
+      }},
+    }
+  </script>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <style>
+    body { font-family: "Hanken Grotesk", sans-serif; }
+    /* Blueprint hairline grid for the directory board */
+    .blueprint {
+      background-color: #F7F8F9;
+      background-image:
+        linear-gradient(#D9DEE4 1px, transparent 1px),
+        linear-gradient(90deg, #D9DEE4 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .mark { /* the ▦ directory glyph */
+      display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr;
+      gap:2px; width:22px; height:22px;
+    }
+    .mark i { background: currentColor; border-radius:1px; }
+    .mark i:nth-child(1),.mark i:nth-child(4){ opacity:.9 }
+    .mark i:nth-child(2),.mark i:nth-child(3){ opacity:.45 }
+    @keyframes ping-ring { 0%{transform:scale(1);opacity:.5} 100%{transform:scale(2.6);opacity:0} }
+    .ring { transform-origin:center; animation: ping-ring 2.4s ease-out infinite; }
+    @media (prefers-reduced-motion: reduce){ .ring{ animation:none; opacity:.25 } }
+    ::-webkit-scrollbar{ width:10px;height:10px } ::-webkit-scrollbar-thumb{ background:#C4CAD1;border-radius:9px }
+    :focus-visible{ outline:2px solid #E8A317; outline-offset:2px }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="bg-paper text-ink antialiased">
+{% if user.is_authenticated %}
+<div class="flex min-h-screen">
+
+  <!-- Directory rail -->
+  <aside class="hidden md:flex w-60 shrink-0 flex-col border-r border-line bg-surface">
+    <div class="px-5 pt-6 pb-5 border-b border-line">
+      <div class="flex items-center gap-2.5 text-signal">
+        <span class="mark"><i></i><i></i><i></i><i></i></span>
+        <span class="font-display font-700 tracking-tight text-ink leading-none">
+          {{ mall.name|default:"Directory" }}
+        </span>
+      </div>
+      <p class="mt-2 font-mono text-[10px] uppercase tracking-[0.22em] text-muted">Mall Directory</p>
+    </div>
+
+    {% with url=request.resolver_match.url_name %}
+    <nav class="flex-1 px-3 py-4 space-y-0.5 text-sm">
+      {% include "_navitem.html" with cur=url want="dashboard" target="dashboard" label="Overview" %}
+      {% include "_navitem.html" with cur=url want="heatmap" target="heatmap" label="Footfall Map" %}
+      {% if not is_admin %}
+        {% include "_navitem.html" with cur=url want="campaigns" target="campaigns" label="Campaigns" %}
+      {% endif %}
+      {% if is_admin %}
+        <p class="px-3 pt-5 pb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-muted">Manage</p>
+        {% include "_navitem.html" with cur=url want="mall_setup" target="mall_setup" label="Mall" %}
+        {% include "_navitem.html" with cur=url want="floors" target="floors" label="Floors" %}
+        {% include "_navitem.html" with cur=url want="stores" target="stores" label="Stores" %}
+        {% include "_navitem.html" with cur=url want="beacons" target="beacons" label="Beacons" %}
+        {% include "_navitem.html" with cur=url want="keepers" target="keepers" label="Keepers" %}
+      {% endif %}
+    </nav>
+    {% endwith %}
+
+    <div class="border-t border-line px-4 py-3 flex items-center justify-between">
+      <div class="min-w-0">
+        <p class="truncate font-500 text-sm">{{ user.username }}</p>
+        <p class="font-mono text-[10px] uppercase tracking-widest text-muted">
+          {% if is_admin %}Super Admin{% else %}Storekeeper{% endif %}
+        </p>
+      </div>
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+        <button class="rounded-md border border-line px-2.5 py-1 text-xs text-muted hover:text-ink hover:border-ink transition">Exit</button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 min-w-0">
+    <header class="flex items-center gap-4 border-b border-line bg-surface/70 px-6 py-4 backdrop-blur">
+      <div class="min-w-0">
+        <h1 class="font-display text-xl font-700 tracking-tight truncate">{% block heading %}{% endblock %}</h1>
+        {% block subheading %}{% endblock %}
+      </div>
+      <div class="ml-auto flex items-center gap-2">{% block toolbar %}{% endblock %}</div>
+    </header>
+    <div class="p-6">{% block content %}{% endblock %}</div>
+  </main>
+</div>
+{% else %}
+  {% block content_anon %}{% endblock %}
+{% endif %}
+<!-- Instant hover tooltip: any element with [data-tip] shows a cursor-following
+     card. Delegated on document, so it works for SVG marks + HTML ⓘ icons and
+     survives htmx swaps. data-tip is app-rendered HTML (set via innerHTML). -->
+<div id="tip" class="pointer-events-none fixed z-50 max-w-[240px] rounded-md bg-ink px-2.5 py-1.5 text-xs leading-snug text-white opacity-0 shadow-lg transition-opacity duration-75" style="left:-9999px"></div>
+<script>
+(function () {
+  var tip = document.getElementById('tip');
+  function move(x, y) {
+    tip.style.left = Math.min(x + 14, window.innerWidth - tip.offsetWidth - 8) + 'px';
+    tip.style.top = Math.min(y + 16, window.innerHeight - tip.offsetHeight - 8) + 'px';
+  }
+  function hide() { tip.style.opacity = '0'; tip.style.left = '-9999px'; }
+  document.addEventListener('pointerover', function (e) {
+    var el = e.target.closest && e.target.closest('[data-tip]');
+    if (el) { tip.innerHTML = el.getAttribute('data-tip'); tip.style.opacity = '1'; move(e.clientX, e.clientY); }
+  });
+  document.addEventListener('pointermove', function (e) {
+    if (tip.style.opacity !== '1') return;
+    var el = e.target.closest && e.target.closest('[data-tip]');
+    if (el) move(e.clientX, e.clientY); else hide();
+  });
+  document.addEventListener('pointerout', function (e) {
+    var el = e.target.closest && e.target.closest('[data-tip]');
+    if (el && !el.contains(e.relatedTarget)) hide();
+  });
+})();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

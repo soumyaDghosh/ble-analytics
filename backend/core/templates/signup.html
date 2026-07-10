@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Request access · City Center Directory{% endblock %}
+{% block content_anon %}
+<div class="min-h-screen grid lg:grid-cols-2">
+  <!-- Blueprint panel -->
+  <div class="relative hidden lg:block blueprint border-r border-line">
+    <div class="absolute bottom-8 left-8 right-8">
+      <div class="flex items-center gap-2.5 text-signal">
+        <span class="mark"><i></i><i></i><i></i><i></i></span>
+        <span class="font-display font-700 text-2xl tracking-tight text-ink">City Center Mall</span>
+      </div>
+      <p class="mt-2 max-w-sm text-sm text-muted">Storekeeper accounts run your store's proximity campaigns. An admin approves each request before first sign-in.</p>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <div class="flex items-center justify-center p-8">
+    <div class="w-full max-w-sm">
+      <p class="font-mono text-[11px] uppercase tracking-[0.22em] text-muted">Storekeeper signup</p>
+      <h1 class="mt-2 font-display text-3xl font-700 tracking-tight">Request an account</h1>
+
+      {% if submitted %}
+      <div class="mt-6 rounded-md border border-active/40 bg-active/10 px-4 py-4">
+        <p class="text-sm font-600 text-ink">Request received.</p>
+        <p class="mt-1 text-sm text-muted">An admin will approve your account and link it to your store. You'll be able to sign in once approved.</p>
+      </div>
+      <p class="mt-6 text-sm text-muted"><a href="{% url 'login' %}" class="font-600 text-ink underline decoration-signal underline-offset-2 hover:text-signal">Back to sign in</a></p>
+      {% else %}
+      <p class="mt-1 text-sm text-muted">Tell us who you are — the admin does the rest.</p>
+
+      <form method="post" class="mt-6 space-y-4">
+        {% csrf_token %}
+        {% for field in form %}
+        <div>
+          <label class="mb-1 block text-sm font-500">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<p class="mt-1 text-xs text-muted">{{ field.help_text|safe }}</p>{% endif %}
+          <div class="text-sm text-[#C43D2E]">{{ field.errors }}</div>
+        </div>
+        {% endfor %}
+        {{ form.non_field_errors }}
+        <button class="w-full rounded-md bg-ink px-3 py-2.5 text-sm font-600 text-white hover:bg-black transition">Request account</button>
+      </form>
+      <p class="mt-6 text-sm text-muted">Already have one? <a href="{% url 'login' %}" class="font-600 text-ink underline decoration-signal underline-offset-2 hover:text-signal">Sign in</a></p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

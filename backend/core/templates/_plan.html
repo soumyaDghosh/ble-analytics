@@ -1,0 +1,155 @@
+{% comment %}Directory board: floor plan + per-store analytics, full width.
+Both views use the same grammar — a store card (name + category + a stacked bar):
+footfall bar = distance bands (near/mid/far), dwell bar = session buckets.
+Hover any card for details (instant tooltip via [data-tip], handled in base.html).
+Board is pan/zoom-able (script in heatmap.html). Auto-polls every 5s.{% endcomment %}
+
+<div class="flex flex-wrap items-center gap-2">
+  <!-- Floor tabs -->
+  <div class="inline-flex rounded-md border border-line bg-surface p-0.5">
+    {% for f in floors %}
+    <button hx-get="{% url 'heatmap' %}?floor={{ f.id }}&range={{ span }}&view={{ view }}"
+            class="rounded px-3 py-1.5 text-sm font-500 transition {% if f.id == floor_id %}bg-ink text-white{% else %}text-muted hover:text-ink{% endif %}">
+      {{ f.name }}
+    </button>
+    {% endfor %}
+  </div>
+  <!-- Range -->
+  <div class="inline-flex rounded-md border border-line bg-surface p-0.5 font-mono text-[11px] uppercase tracking-wider">
+    {% for key, lbl in ranges %}
+    <button hx-get="{% url 'heatmap' %}?floor={{ floor_id }}&range={{ key }}&view={{ view }}"
+            class="rounded px-2.5 py-1.5 transition {% if key == span %}bg-signal text-ink font-600{% else %}text-muted hover:text-ink{% endif %}">
+      {{ lbl }}
+    </button>
+    {% endfor %}
+  </div>
+  <!-- View mode: Footfall | Dwell -->
+  <div class="inline-flex rounded-md border border-line bg-surface p-0.5 font-mono text-[11px] uppercase tracking-wider">
+    {% for key, lbl in view_choices %}
+    <button hx-get="{% url 'heatmap' %}?floor={{ floor_id }}&range={{ span }}&view={{ key }}"
+            class="rounded px-2.5 py-1.5 transition {% if key == view %}bg-ink text-white font-600{% else %}text-muted hover:text-ink{% endif %}">
+      {{ lbl }}
+    </button>
+    {% endfor %}
+  </div>
+  <button type="button" onclick="window.boardResetView&&window.boardResetView()"
+          class="rounded-md border border-line bg-surface px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted hover:text-ink transition">Reset view</button>
+  <span class="ml-auto inline-flex items-center gap-2 font-mono text-[11px] text-muted">
+    <span class="relative flex h-2 w-2">
+      <span class="absolute inline-flex h-full w-full rounded-full bg-active opacity-60" style="animation:ping-ring 2.4s ease-out infinite"></span>
+      <span class="relative inline-flex h-2 w-2 rounded-full bg-active"></span>
+    </span>
+    live · auto 5s
+  </span>
+</div>
+
+<!-- The board (full width) -->
+<div class="mt-4 relative w-full overflow-hidden rounded-lg border border-line" style="aspect-ratio:{{ board.vw }}/{{ board.vh }}; background:#F7F8F9; touch-action:none; cursor:grab">
+  <svg id="board-svg" viewBox="{{ board.vbx }} {{ board.vby }} {{ board.vw }} {{ board.vh }}" class="absolute inset-0 h-full w-full" font-family="'IBM Plex Mono', monospace">
+    <defs>
+      <pattern id="blueprint-grid" width="{{ board.grid }}" height="{{ board.grid }}" patternUnits="userSpaceOnUse">
+        <path d="M{{ board.grid }} 0 L0 0 0 {{ board.grid }}" fill="none" stroke="#D9DEE4" stroke-width="1" opacity="0.35"/>
+      </pattern>
+    </defs>
+
+    {% comment %}Layer 0: outer frame + faint blueprint hairlines (1 square = 1 m on metered floors).
+    Frame = the floor's drawn boundary polygon when set, else the default rectangle.{% endcomment %}
+    <rect x="{{ board.vbx }}" y="{{ board.vby }}" width="{{ board.vw }}" height="{{ board.vh }}" fill="url(#blueprint-grid)"/>
+    {% if board.outline %}
+    <polygon points="{{ board.outline }}" rx="6" fill="none" stroke="#B9C0C8" stroke-width="2"/>
+    {% else %}
+    <rect x="8" y="8" width="{{ board.w|add:'-16' }}" height="{{ board.h|add:'-16' }}" rx="6" fill="none" stroke="#B9C0C8" stroke-width="2"/>
+    {% endif %}
+
+    {% comment %}Layer 1: store cards — name, category, stacked metric bar, count{% endcomment %}
+    {% for s in stores %}
+    <g class="tip" style="cursor:help" data-tip="{{ s.tip }}">
+      {% if s.points_str %}
+      <polygon points="{{ s.points_str }}" fill="#FFFFFF" fill-opacity="0.92" stroke="#C4CBD3" stroke-width="1.25"/>
+      {% else %}
+      <rect x="{{ s.pos_x|add:'-64' }}" y="{{ s.pos_y|add:'-46' }}" width="128" height="92" rx="6"
+            fill="#FFFFFF" stroke="#C4CBD3" stroke-width="1.25"/>
+      {% endif %}
+      <text x="{{ s.pos_x }}" y="{{ s.pos_y|add:'-24' }}" text-anchor="middle"
+            font-family="'Space Grotesk',sans-serif" font-size="16" font-weight="600" fill="#14181F">{{ s.name }}</text>
+      <text x="{{ s.pos_x }}" y="{{ s.pos_y|add:'-9' }}" text-anchor="middle"
+            font-size="9.5" letter-spacing="1" fill="#8A929C">{{ s.category|upper }}</text>
+      {% if s.bar_total %}
+        {% comment %}track + stacked segments (white seams = 2px gap, dataviz){% endcomment %}
+        <rect x="{{ s.pos_x|add:'-58' }}" y="{{ s.pos_y|add:'2' }}" width="116" height="9" rx="4.5" fill="#EDEFF2"/>
+        {% for seg in s.bar_segments %}
+        <rect x="{{ s.pos_x|add:'-58'|add:seg.x }}" y="{{ s.pos_y|add:'2' }}" width="{{ seg.w }}" height="9" rx="2"
+              fill="{{ seg.color }}" stroke="#FFFFFF" stroke-width="1.2"/>
+        {% endfor %}
+        <text x="{{ s.pos_x }}" y="{{ s.pos_y|add:'30' }}" text-anchor="middle" font-size="10.5" fill="#6B7480">
+          {% if view == 'focus' %}{{ s.focus_pct }}% close{% elif view == 'dwell' %}{{ s.bar_total }} session{{ s.bar_total|pluralize }}{% else %}{{ s.bar_total }} visitor{{ s.bar_total|pluralize }}{% endif %}
+        </text>
+      {% else %}
+        <rect x="{{ s.pos_x|add:'-58' }}" y="{{ s.pos_y|add:'2' }}" width="116" height="9" rx="4.5" fill="#EDEFF2"/>
+        <text x="{{ s.pos_x }}" y="{{ s.pos_y|add:'30' }}" text-anchor="middle" font-size="10.5" fill="#B4BAC2">no data yet</text>
+      {% endif %}
+    </g>
+    {% endfor %}
+
+    {% comment %}Layer 1b: assigned beacon dots — shows which beacons belong to a store{% endcomment %}
+    {% for b in beacons %}{% if b.store_id %}
+    <circle cx="{{ b.pos_x }}" cy="{{ b.pos_y }}" r="3.5" fill="#0E7C66" stroke="#FFFFFF" stroke-width="1.25"/>
+    {% endif %}{% endfor %}
+
+    {% comment %}Layer 2: gate beacon(s) — the visitor entry point / "you are here"{% endcomment %}
+    {% for b in beacons %}
+      {% if not b.store_id %}
+      <g class="tip" style="cursor:help" data-tip="{{ b.tip }}">
+        <path transform="translate({{ b.pos_x|add:'-16' }},{{ b.pos_y|add:'-16' }}) scale(1.1)"
+              d="M15 2 l4 8 9 1 -6.5 6.5 1.5 9 -8 -4.5 -8 4.5 1.5 -9 -6.5 -6.5 9 -1z" fill="#0E7C66"/>
+        <text x="{{ b.pos_x }}" y="{{ b.pos_y|add:'34' }}" text-anchor="middle" font-size="11"
+              font-weight="600" letter-spacing="1" fill="#0E7C66">YOU ARE HERE</text>
+        {% if view == 'footfall' and b.count %}
+        <text x="{{ b.pos_x }}" y="{{ b.pos_y|add:'56' }}" text-anchor="middle"
+              font-family="'Space Grotesk',sans-serif" font-size="19" font-weight="700"
+              fill="#14181F" stroke="#FFFFFF" stroke-width="4" paint-order="stroke" style="paint-order:stroke">{{ b.count }}</text>
+        {% endif %}
+      </g>
+      {% endif %}
+    {% endfor %}
+  </svg>
+</div>
+
+<!-- Legend -->
+<div class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] text-muted">
+  {% if view == 'footfall' or view == 'focus' %}
+  <span class="flex items-center gap-2">
+    <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm" style="background:#7A4A02"></span>near</span>
+    <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm" style="background:#D68A0C"></span>mid</span>
+    <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm" style="background:#F2C879"></span>far</span>
+    {% if view == 'focus' %}
+    {% include "_info.html" with tip="Where a store's visitors spent their <b>time</b>, by distance from the beacon:<br><b>near</b> &lt;3m (at the counter) · <b>mid</b> 3–9m · <b>far</b> &gt;9m (the edge).<br>RSSI gives distance, not direction — so this is close-vs-far, not inside-vs-front." %}
+    <span class="text-muted">· where their time went</span>
+    {% else %}
+    {% include "_info.html" with tip="Distance bands from signal strength (RSSI):<br><b>near</b> &lt;3m · <b>mid</b> 3–9m · <b>far</b> &gt;9m.<br>Each visitor is placed by their <b>closest</b> approach. RSSI gives distance, not direction." %}
+    <span class="text-muted">· how close visitors got</span>
+    {% endif %}
+  </span>
+  {% else %}
+  <span class="flex items-center gap-2">
+    <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full" style="background:#6BA8C9"></span>glance</span>
+    <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full" style="background:#0E7C66"></span>look</span>
+    <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full" style="background:#E8A317"></span>browse</span>
+    <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full" style="background:#C43D2E"></span>linger</span>
+    {% include "_info.html" with tip="How long each visit lasted:<br><b>glance</b> &lt;15s · <b>look</b> 15–60s · <b>browse</b> 1–5min · <b>linger</b> &gt;5min." %}
+    <span class="text-muted">· how long they stayed</span>
+  </span>
+  {% endif %}
+  <span class="flex items-center gap-1.5"><span class="inline-block h-2 w-2 rounded-full" style="background:#0E7C66"></span> beacon</span>
+  <span class="flex items-center gap-1.5"><span class="text-active">★</span> gate</span>
+  <span class="text-muted">· hover a store for details · scroll to zoom, drag to pan</span>
+</div>
+
+<!-- Auto-poller: refetches this fragment every 5s with current params so the board
+     ticks live during the seed demo. Zoom/pan state is reapplied after each swap
+     (see heatmap.html). -->
+<div style="display:none"
+     hx-get="{% url 'heatmap' %}?floor={{ floor_id }}&range={{ span }}&view={{ view }}"
+     hx-trigger="every 5s"
+     hx-target="#stage"
+     hx-swap="innerHTML"></div>
