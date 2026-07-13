@@ -12,7 +12,7 @@ W, H = 1000, 720
 # (name, slug, category, floor_number, x, y, tagline, badge)
 # slug -> media/stores/<slug>.jpg storefront photo; tagline+badge = Swiggy/Zomato-style hook shown on the card.
 STORES = [
-    ('Nike', 'nike', 'Sportswear', 0, 300, 180, 'Just do it — new drops in', 'OFFER'),
+    ('Nike', 'nike', 'Sportswear', 0, 300, 180, 'Just do it - new drops in', 'OFFER'),
     ('Starbucks', 'starbucks', 'Cafe', 0, 520, 120, 'Handcrafted coffee & bites', 'FREE'),
     ('Zara', 'zara', 'Fashion', 0, 720, 200, 'New season arrivals', 'NEW'),
     ('Apple', 'apple', 'Electronics', 0, 800, 460, 'Latest iPhone, Mac & more', ''),
@@ -74,7 +74,7 @@ class Command(BaseCommand):
                                   beacon_type=Beacon.STORE, pos_x=x - 5, pos_y=y - 5, tx_power=-59)
             stores[name] = store
 
-        # Nike gets a second beacon — shows multi-beacon-per-store on the dashboard.
+        # Nike gets a second beacon - shows multi-beacon-per-store on the dashboard.
         Beacon.objects.create(mall=mall, floor=ground, store=stores['Nike'], adv_id=adv(),
                               beacon_type=Beacon.STORE, pos_x=280, pos_y=210, tx_power=-59)
 

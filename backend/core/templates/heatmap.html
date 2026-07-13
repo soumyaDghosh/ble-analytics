@@ -25,7 +25,7 @@
     s.style.transformOrigin = '0 0';
     s.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
   }
-  // Only act when the pointer is on the board SVG — never over the floor/range/
+  // Only act when the pointer is on the board SVG - never over the floor/range/
   // view buttons, which live inside #stage too. (Capturing the pointer on those
   // would swallow their click and freeze the controls.)
   function onBoard(e) { return e.target.closest && e.target.closest('#board-svg'); }

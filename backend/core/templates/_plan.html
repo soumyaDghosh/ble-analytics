@@ -1,5 +1,5 @@
 {% comment %}Directory board: floor plan + per-store analytics, full width.
-Both views use the same grammar — a store card (name + category + a stacked bar):
+Both views use the same grammar - a store card (name + category + a stacked bar):
 footfall bar = distance bands (near/mid/far), dwell bar = session buckets.
 Hover any card for details (instant tooltip via [data-tip], handled in base.html).
 Board is pan/zoom-able (script in heatmap.html). Auto-polls every 5s.{% endcomment %}
@@ -61,7 +61,7 @@ Board is pan/zoom-able (script in heatmap.html). Auto-polls every 5s.{% endcomme
     <rect x="8" y="8" width="{{ board.w|add:'-16' }}" height="{{ board.h|add:'-16' }}" rx="6" fill="none" stroke="#B9C0C8" stroke-width="2"/>
     {% endif %}
 
-    {% comment %}Layer 1: store cards — name, category, stacked metric bar, count{% endcomment %}
+    {% comment %}Layer 1: store cards - name, category, stacked metric bar, count{% endcomment %}
     {% for s in stores %}
     <g class="tip" style="cursor:help" data-tip="{{ s.tip }}">
       {% if s.points_str %}
@@ -91,12 +91,12 @@ Board is pan/zoom-able (script in heatmap.html). Auto-polls every 5s.{% endcomme
     </g>
     {% endfor %}
 
-    {% comment %}Layer 1b: assigned beacon dots — shows which beacons belong to a store{% endcomment %}
+    {% comment %}Layer 1b: assigned beacon dots - shows which beacons belong to a store{% endcomment %}
     {% for b in beacons %}{% if b.store_id %}
     <circle cx="{{ b.pos_x }}" cy="{{ b.pos_y }}" r="3.5" fill="#0E7C66" stroke="#FFFFFF" stroke-width="1.25"/>
     {% endif %}{% endfor %}
 
-    {% comment %}Layer 2: gate beacon(s) — the visitor entry point / "you are here"{% endcomment %}
+    {% comment %}Layer 2: gate beacon(s) - the visitor entry point / "you are here"{% endcomment %}
     {% for b in beacons %}
       {% if not b.store_id %}
       <g class="tip" style="cursor:help" data-tip="{{ b.tip }}">
@@ -123,7 +123,7 @@ Board is pan/zoom-able (script in heatmap.html). Auto-polls every 5s.{% endcomme
     <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm" style="background:#D68A0C"></span>mid</span>
     <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm" style="background:#F2C879"></span>far</span>
     {% if view == 'focus' %}
-    {% include "_info.html" with tip="Where a store's visitors spent their <b>time</b>, by distance from the beacon:<br><b>near</b> &lt;3m (at the counter) · <b>mid</b> 3–9m · <b>far</b> &gt;9m (the edge).<br>RSSI gives distance, not direction — so this is close-vs-far, not inside-vs-front." %}
+    {% include "_info.html" with tip="Where visitors spent their <b>time</b>, by distance from the beacon:<br><b>near</b> &lt;3m · <b>mid</b> 3–9m · <b>far</b> &gt;9m.<br>RSSI is distance, not direction - close-vs-far, not inside-vs-front." %}
     <span class="text-muted">· where their time went</span>
     {% else %}
     {% include "_info.html" with tip="Distance bands from signal strength (RSSI):<br><b>near</b> &lt;3m · <b>mid</b> 3–9m · <b>far</b> &gt;9m.<br>Each visitor is placed by their <b>closest</b> approach. RSSI gives distance, not direction." %}
@@ -141,7 +141,7 @@ Board is pan/zoom-able (script in heatmap.html). Auto-polls every 5s.{% endcomme
   </span>
   {% endif %}
   <span class="flex items-center gap-1.5"><span class="inline-block h-2 w-2 rounded-full" style="background:#0E7C66"></span> beacon</span>
-  <span class="flex items-center gap-1.5"><span class="text-active">★</span> gate</span>
+  <span class="flex items-center gap-1.5"><svg class="text-active" viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> gate</span>
   <span class="text-muted">· hover a store for details · scroll to zoom, drag to pan</span>
 </div>
 

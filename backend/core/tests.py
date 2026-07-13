@@ -10,7 +10,7 @@ from .models import CacheVersion, Mall
 
 
 class DwellLogic(unittest.TestCase):
-    """Pure gaps-and-islands logic — no DB, runs under `manage.py test core`."""
+    """Pure gaps-and-islands logic - no DB, runs under `manage.py test core`."""
 
     def test_bucket_edges(self):
         cases = [(0, 'glance'), (14, 'glance'), (15, 'look'), (59, 'look'),
@@ -81,7 +81,7 @@ class SignupApproval(TestCase):
 
 
 class CampaignAccess(TestCase):
-    """Campaigns belong to keepers — admins are 403'd out."""
+    """Campaigns belong to keepers - admins are 403'd out."""
 
     def test_admin_403_keeper_200(self):
         User = get_user_model()

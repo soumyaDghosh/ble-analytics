@@ -27,7 +27,7 @@ class Styled(forms.ModelForm):
 
 
 class MallForm(Styled):
-    # Top of the hierarchy — a fresh install creates this before anything else.
+    # Top of the hierarchy - a fresh install creates this before anything else.
     class Meta:
         model = Mall
         fields = ['name', 'address']
@@ -75,7 +75,7 @@ class StoreForm(Styled):
     # A plain CharField (not the model JSONField) keeps the widget round-trip simple.
     shape_json = forms.CharField(widget=forms.HiddenInput, required=False)
     # The store owns beacon assignment (reverse FK). Offer beacons that are
-    # unassigned or already ours — never silently steal another store's beacon.
+    # unassigned or already ours - never silently steal another store's beacon.
     beacons = forms.ModelMultipleChoiceField(
         queryset=Beacon.objects.none(), required=False,
         widget=forms.CheckboxSelectMultiple)
@@ -90,7 +90,7 @@ class StoreForm(Styled):
         # Assign to any approved storekeeper account; a keeper holds many stores (FK).
         self.fields['keeper'].queryset = get_user_model().objects.filter(
             is_superuser=False, is_active=True)
-        self.fields['keeper'].empty_label = '— unassigned —'
+        self.fields['keeper'].empty_label = '- unassigned -'
 
         inst = self.instance if self.instance.pk else None
         qs = Beacon.objects.filter(Q(store__isnull=True) | Q(store=inst)) if inst \
@@ -110,7 +110,7 @@ class StoreForm(Styled):
         try:
             pts = json.loads(raw)
         except ValueError:
-            raise forms.ValidationError('Invalid footprint data — redraw it.')
+            raise forms.ValidationError('Invalid footprint data - redraw it.')
         if not isinstance(pts, list) or len(pts) < 3:
             raise forms.ValidationError('Draw at least 3 points, or clear the footprint.')
         return [[int(p[0]), int(p[1])] for p in pts]
@@ -146,7 +146,7 @@ class FloorForm(Styled):
         try:
             pts = json.loads(raw)
         except ValueError:
-            raise forms.ValidationError('Invalid boundary data — redraw it.')
+            raise forms.ValidationError('Invalid boundary data - redraw it.')
         if not isinstance(pts, list) or len(pts) < 3:
             raise forms.ValidationError('Draw at least 3 points, or clear the boundary.')
         return [[int(p[0]), int(p[1])] for p in pts]
@@ -155,13 +155,13 @@ class FloorForm(Styled):
 class BeaconForm(Styled):
     class Meta:
         model = Beacon
-        # No 'store' — assignment lives on the store form (store owns its beacons).
+        # No 'store' - assignment lives on the store form (store owns its beacons).
         fields = ['adv_id', 'beacon_type', 'floor', 'tx_power', 'pos_x', 'pos_y']
         widgets = {'pos_x': forms.HiddenInput(), 'pos_y': forms.HiddenInput()}
 
 
 class SignupForm(UserCreationForm):
-    """Public storekeeper self-registration. Lands inactive — an admin approves
+    """Public storekeeper self-registration. Lands inactive - an admin approves
     (flips is_active) on the Keepers page and assigns the actual Store afterward."""
     shop_name = forms.CharField(
         max_length=120, label='Shop / business name',
@@ -178,7 +178,7 @@ class SignupForm(UserCreationForm):
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        # ponytail: reuse User.first_name as the signup shop-name hint — no extra
+        # ponytail: reuse User.first_name as the signup shop-name hint - no extra
         # model/migration for one label the admin only reads before assigning a store.
         user.first_name = self.cleaned_data['shop_name']
         user.is_active = False   # gated on admin approval before first login

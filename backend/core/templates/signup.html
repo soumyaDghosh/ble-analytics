@@ -9,7 +9,7 @@
         <span class="mark"><i></i><i></i><i></i><i></i></span>
         <span class="font-display font-700 text-2xl tracking-tight text-ink">City Center Mall</span>
       </div>
-      <p class="mt-2 max-w-sm text-sm text-muted">Storekeeper accounts run your store's proximity campaigns. An admin approves each request before first sign-in.</p>
+      <p class="mt-2 max-w-sm text-sm text-muted">Run your store's proximity campaigns. An admin approves each request first.</p>
     </div>
   </div>
 
@@ -22,11 +22,11 @@
       {% if submitted %}
       <div class="mt-6 rounded-md border border-active/40 bg-active/10 px-4 py-4">
         <p class="text-sm font-600 text-ink">Request received.</p>
-        <p class="mt-1 text-sm text-muted">An admin will approve your account and link it to your store. You'll be able to sign in once approved.</p>
+        <p class="mt-1 text-sm text-muted">An admin approves and links your account to your store. Sign in once approved.</p>
       </div>
       <p class="mt-6 text-sm text-muted"><a href="{% url 'login' %}" class="font-600 text-ink underline decoration-signal underline-offset-2 hover:text-signal">Back to sign in</a></p>
       {% else %}
-      <p class="mt-1 text-sm text-muted">Tell us who you are — the admin does the rest.</p>
+      <p class="mt-1 text-sm text-muted">Tell us who you are - the admin does the rest.</p>
 
       <form method="post" class="mt-6 space-y-4">
         {% csrf_token %}

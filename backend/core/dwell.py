@@ -1,12 +1,12 @@
-"""Dwell analytics — gaps-and-islands over (device_hash, store_id, time).
+"""Dwell analytics - gaps-and-islands over (device_hash, store_id, time).
 
 A "visit session" is consecutive pings from one device at one store with no
 gap larger than 5 minutes. Session length = last_ping - first_ping. Single-
 ping sessions (no second ping within 5min) count as length 0s = "glance" =
 "walked past". This is the honest answer to "were they in the store or just
-passing by" — measured from real timestamp gaps, not RSSI.
+passing by" - measured from real timestamp gaps, not RSSI.
 
-Pure Django ORM — we fetch ordered pings via LocationPing.objects.values()
+Pure Django ORM - we fetch ordered pings via LocationPing.objects.values()
 and detect sessions by walking the ordered list, splitting on gaps > GAP_S.
 At demo scale (a few thousand pings per time window) this is fast and keeps
 the code plainly readable.
@@ -32,10 +32,10 @@ BUCKET_NAMES = [b[0] for b in BUCKETS]
 # Bucket → color, consistent with the heatmap ring palette.
 # 4 distinct colors (cool → warm = walked past → stayed long):
 DOMINANT_COLOR = {
-    'glance': '#6BA8C9',   # light blue — walked past
-    'look':   '#0E7C66',   # active-green — short
-    'browse': '#E8A317',   # signal-amber — engaged
-    'linger': '#C43D2E',   # alert-red — stayed long
+    'glance': '#6BA8C9',   # light blue - walked past
+    'look':   '#0E7C66',   # active-green - short
+    'browse': '#E8A317',   # signal-amber - engaged
+    'linger': '#C43D2E',   # alert-red - stayed long
 }
 
 
@@ -51,7 +51,7 @@ def _bucket(sec):
 def _session_qs(mall_id, start, end, fields, store_ids=None):
     """Ordered queryset for session detection. Caller passes the exact fields
     it wants via `fields`. Returns a materialized list ready for Python-side
-    gaps-and-islands iteration — no raw SQL, no window functions."""
+    gaps-and-islands iteration - no raw SQL, no window functions."""
     qs = (LocationPing.objects
           .filter(mall_id=mall_id, store_id__isnull=False,
                   time__gte=start, time__lt=end))
@@ -110,7 +110,7 @@ def dwell_stats(mall_id, start, end, store_ids=None):
 
 def dwell_buckets_per_store(mall_id, start, end, store_ids=None):
     """Per-store dwell mix. Returns {store_id: {glance,look,browse,linger,total}}
-    — the real distribution of session lengths, so the map can show a stacked
+    - the real distribution of session lengths, so the map can show a stacked
     mix bar instead of a single collapsed 'dominant' colour."""
     out = {}
     for s in dwell_sessions(mall_id, start, end, store_ids):

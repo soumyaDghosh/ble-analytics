@@ -22,7 +22,7 @@ admin_only = user_passes_test(lambda u: u.is_superuser)
 
 
 def keeper_only(view):
-    """Campaigns belong to storekeepers, not admins — 403 superusers out."""
+    """Campaigns belong to storekeepers, not admins - 403 superusers out."""
     @wraps(view)
     def wrapped(request, *args, **kwargs):
         if request.user.is_superuser:
@@ -66,7 +66,7 @@ def _place_ctx(mall, form, kind, inst):
     """Shared context for the graph-paper place editor. Ships every floor's
     coordinate space (+ its boundary outline) so the canvas resizes/regrids/redraws
     on the floor <select>, plus the other shops and beacons drawn as faint context.
-    The shop/beacon being edited is excluded — its own layer draws it live."""
+    The shop/beacon being edited is excluded - its own layer draws it live."""
     floors = list(Floor.objects.filter(mall=mall))
     spaces = {}
     for f in floors:
@@ -102,7 +102,7 @@ def _range(key):
 @login_required
 def mall_settings(request):
     """Fresh-setup create + later edit for the single mall. Storekeepers never
-    set up a mall — they only reach here via the gate before one exists, and see
+    set up a mall - they only reach here via the gate before one exists, and see
     a wait screen."""
     mall = Mall.objects.first()
     if not request.user.is_superuser:
@@ -114,7 +114,7 @@ def mall_settings(request):
             if not mall:
                 m.id = 1  # pin id=1 so the app's hardcoded mall_id resolves (single-mall MVP)
             m.save()
-            # The app polls /api/v1/cache/version and 404s without this row — seed
+            # The app polls /api/v1/cache/version and 404s without this row - seed
             # makes it too. Every mall needs its cache pointer from birth.
             CacheVersion.objects.get_or_create(mall=m)
             return redirect('dashboard')
@@ -148,7 +148,7 @@ def overview(request):
     names = dict(Store.objects.filter(mall=mall).values_list('id', 'name')) if mall else {}
     busiest = [{'name': names.get(r['store_id'], 'Common area'), 'w': r['w']} for r in busiest]
 
-    # Dwell today — headline "how long they stayed": avg stay + distribution.
+    # Dwell today - headline "how long they stayed": avg stay + distribution.
     ds = (dwell_stats(mall.id, start, now, store_ids=store_ids) if mall else
           {'totals': {n: 0 for n in BUCKET_NAMES}, 'total_sessions': 0, 'avg_s': 0})
     totals = ds['totals']
@@ -162,17 +162,17 @@ def overview(request):
         'buckets': [(name, ranges_txt[name], totals.get(name, 0)) for name in BUCKET_NAMES],
     }
 
-    # Engagement — share of a store's detections within ~3m (near band).
+    # Engagement - share of a store's detections within ~3m (near band).
     engagement = store_engagement(mall.id, start, now, store_ids=store_ids) if mall else []
     for r in engagement:
         r['name'] = names.get(r['store_id'], 'Common area')
     # Hover alert: enough traffic, but most detection-time was NOT close (<34%
-    # near) — people linger at the store's edge without coming in to the counter.
+    # near) - people linger at the store's edge without coming in to the counter.
     HOVER_MAX_NEAR = 34  # ponytail: fixed threshold; tune if it fires too often
     hover_stores = [r['name'] for r in engagement if r['share'] < HOVER_MAX_NEAR]
     engagement = engagement[:6]
 
-    # Hourly footfall — distinct visitors by wall-clock hour today. Highlight every
+    # Hourly footfall - distinct visitors by wall-clock hour today. Highlight every
     # bar tied at the peak (not just the first), so plateaus read honestly.
     hours = hourly_footfall(mall.id, start, now, store_ids=store_ids) if mall else [0] * 24
     hmax = max(hours) or 1
@@ -199,7 +199,7 @@ def heatmap(request):
 
     stores = visible_stores(request.user).filter(mall=mall, floor_id=floor_id).order_by('category', 'name')
     # Restrict beacons to those of the visible stores; gate beacons (store=None)
-    # are public — every visitor passes through them — keep them for everyone.
+    # are public - every visitor passes through them - keep them for everyone.
     if request.user.is_superuser:
         beacons = list(Beacon.objects.filter(mall=mall, floor_id=floor_id))
         store_ids_on_floor = [s.id for s in stores]
@@ -240,7 +240,7 @@ def heatmap(request):
                                 s.name, s.bar_total, '' if s.bar_total == 1 else 's',
                                 d['near'], d['mid'], d['far'], share_txt)
     elif view == 'focus':
-        # Dwell time split by distance — where visitors spent time (close vs edge).
+        # Dwell time split by distance - where visitors spent time (close vs edge).
         bandt = store_dwell_by_band(mall.id, start, end, store_ids=store_ids_on_floor)
         for s in stores:
             d = bandt.get(s.id) or {'near': 0, 'mid': 0, 'far': 0}

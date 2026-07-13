@@ -68,7 +68,7 @@ class Scanner extends ChangeNotifier {
     _syncedThisSession = false;
     _lastKnown = DateTime.now();
     _sub = FlutterBluePlus.onScanResults.listen(_onResults);
-    // Scan everything, filter in Dart — the Android 16-bit UUID scan filter is unreliable.
+    // Scan everything, filter in Dart - the Android 16-bit UUID scan filter is unreliable.
     try {
       await FlutterBluePlus.startScan(continuousUpdates: true, androidScanMode: AndroidScanMode.lowLatency);
     } catch (e) {
@@ -204,7 +204,7 @@ class Scanner extends ChangeNotifier {
     notifyListeners();
   }
 
-  // The exact body the phone would POST right now — for the in-app payload viewer.
+  // The exact body the phone would POST right now - for the in-app payload viewer.
   Future<Map<String, dynamic>> pendingPayload() async {
     final pings = await db.takePings();
     final imps = await db.takeImpressions();

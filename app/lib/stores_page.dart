@@ -15,7 +15,7 @@ class StoreFilter extends ChangeNotifier {
   String? category; // null = all categories
   bool userPicked = false; // user chose a floor -> stop auto-following the beacon
 
-  // Any narrowing lights the filter dot — whether the beacon auto-followed a
+  // Any narrowing lights the filter dot - whether the beacon auto-followed a
   // floor or the user picked one/a category. "All" (null) clears it.
   bool get active => floor != null || category != null;
 
@@ -202,7 +202,7 @@ class _StoresPageState extends State<StoresPage> {
           const Icon(Icons.my_location_rounded, size: 16, color: signal),
           const SizedBox(width: 8),
           Expanded(
-            child: Text("You're on $name — showing this floor",
+            child: Text("You're on $name - showing this floor",
                 style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: ink)),
           ),
           GestureDetector(
@@ -352,7 +352,7 @@ class _StoreCard extends StatelessWidget {
       );
 
   Widget _trailing() => Row(mainAxisSize: MainAxisSize.min, children: [
-        // visited tick — bounces in when the offer fires
+        // visited tick - bounces in when the offer fires
         AnimatedScale(
           scale: visited ? 1 : 0,
           duration: const Duration(milliseconds: 380),

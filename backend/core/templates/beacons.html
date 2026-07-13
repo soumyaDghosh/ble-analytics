@@ -16,7 +16,7 @@
       <tr class="border-b border-line last:border-0 hover:bg-paper/50">
         <td class="px-5 py-3 font-mono font-500">{{ b.adv_id }}</td>
         <td class="px-5 py-3 text-muted capitalize">{{ b.beacon_type }}</td>
-        <td class="px-5 py-3 text-muted">{{ b.store.name|default:"—" }}</td>
+        <td class="px-5 py-3 text-muted">{{ b.store.name|default:"-" }}</td>
         <td class="px-5 py-3 text-muted">{{ b.floor.name }}</td>
         <td class="px-5 py-3 font-mono text-xs text-muted">{{ b.tx_power }}</td>
         <td class="px-5 py-3 font-mono text-xs text-muted">{{ b.pos_x }}, {{ b.pos_y }}</td>

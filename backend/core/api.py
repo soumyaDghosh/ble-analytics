@@ -54,7 +54,7 @@ def data_sync(request):
                for b in mall.beacons.all()]
 
     # Active + soon-to-start (24h) so the app has it cached before the time boundary.
-    # App filters starts<=now<=ends locally — fixes "activates on time, version never bumps".
+    # App filters starts<=now<=ends locally - fixes "activates on time, version never bumps".
     camps = (Campaign.objects
              .filter(store__mall_id=mall_id, status=Campaign.ACTIVE,
                      ends_at__gte=now, starts_at__lte=now + timedelta(days=1))

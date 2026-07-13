@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% block title %}{% if obj %}Edit{% else %}New{% endif %} {{ kind }} · City Center Directory{% endblock %}
 {% block heading %}{% if obj %}Edit{% else %}New{% endif %} {{ kind }}{% endblock %}
-{% block subheading %}<p class="mt-0.5 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">{% if kind == 'store' %}Adjust the footprint on graph paper — drag inside to move, corners to reshape{% else %}Click the graph paper to set the beacon position{% endif %}</p>{% endblock %}
+{% block subheading %}<p class="mt-0.5 font-mono text-[11px] uppercase tracking-[0.18em] text-muted">{% if kind == 'store' %}Adjust the footprint on graph paper - drag inside to move, corners to reshape{% else %}Click the graph paper to set the beacon position{% endif %}</p>{% endblock %}
 
 {% comment %}Graph-paper place editor. Same engine grammar as the floor editor
 (floor_form.html): metre grid, rulers (origin bottom-left, Y up), zoom/pan/snap.
 Store = footprint polygon (full corner/wall/insert/close + whole-shape drag),
 seeded as a square when the shop has none. Beacon = single dot. Both draw the
 floor boundary + other shops (toggle) + assigned beacons as context.
-ponytail: grid/zoom/pan math is a second copy of floor_form's — acceptable at 2
+ponytail: grid/zoom/pan math is a second copy of floor_form's - acceptable at 2
 consumers; extract a shared _board_editor.html partial only if a 3rd appears or
 they diverge painfully.{% endcomment %}
 {% block content %}
@@ -76,7 +76,7 @@ they diverge painfully.{% endcomment %}
     <!-- one contextual readout line -->
     <div class="mt-2 rounded-md border border-line bg-surface px-4 py-2.5">
       <p id="measure-line" class="font-display text-base font-600 text-ink">&nbsp;</p>
-      <p class="mt-0.5 font-mono text-[11px] text-muted">{% if kind == 'store' %}<b>drawing:</b> click empty grid to add a corner · click corner 1 (or “Close footprint”) to finish · <b>after closing:</b> drag inside to move the whole shape · drag a corner or wall to reshape · click a wall to insert a corner · click a corner to delete · drag empty to pan · scroll to zoom{% else %}click the grid to drop the beacon · drag empty to pan · scroll to zoom{% endif %} · origin bottom-left (Y up)</p>
+      <p class="mt-0.5 font-mono text-[11px] text-muted">{% if kind == 'store' %}<b>drawing:</b> click empty grid to add a corner · click corner 1 (or "Close footprint") to finish · <b>after closing:</b> drag inside to move the whole shape · drag a corner or wall to reshape · click a wall to insert a corner · click a corner to delete · drag empty to pan · scroll to zoom{% else %}click the grid to drop the beacon · drag empty to pan · scroll to zoom{% endif %} · origin bottom-left (Y up)</p>
       {% if kind == 'store' %}<div class="mt-1 text-sm text-[#C43D2E]">{{ form.shape_json.errors }}</div>{% endif %}
     </div>
   </div>
@@ -87,14 +87,14 @@ they diverge painfully.{% endcomment %}
     <div>
       <label class="mb-1 block text-sm font-500">{{ field.label }}</label>
       {% if field.name == 'beacons' %}
-        <p class="mb-2 text-xs text-muted">Beacons that belong to this store. Unchecking releases a beacon (it becomes unassigned). Only unassigned beacons on this floor are listed.</p>
+        <p class="mb-2 text-xs text-muted">Beacons for this store. Uncheck to release one. Only unassigned beacons on this floor are listed.</p>
         <div class="flex flex-wrap gap-2">
           {% for cb in field %}
           <label class="flex cursor-pointer items-center gap-2 rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-mono has-[:checked]:border-signal has-[:checked]:bg-signal/10">
             {{ cb.tag }} <span>{{ cb.choice_label }}</span>
           </label>
           {% empty %}
-          <span class="text-xs text-muted">No unassigned beacons on this floor — add beacons first.</span>
+          <span class="text-xs text-muted">No unassigned beacons on this floor - add beacons first.</span>
           {% endfor %}
         </div>
       {% else %}
@@ -156,7 +156,7 @@ they diverge painfully.{% endcomment %}
   function perim(){ var d=0; for (var i=0;i<pts.length;i++){ var a=pts[i], b=pts[(i+1)%pts.length]; d+=Math.hypot(b[0]-a[0], b[1]-a[1]); } return sp.metered ? d/sp.ppm : d; }
   function area(){ var s=0; for (var i=0;i<pts.length;i++){ var a=pts[i], b=pts[(i+1)%pts.length]; s+=a[0]*b[1]-b[0]*a[1]; } var v=Math.abs(s)/2; return sp.metered ? v/(sp.ppm*sp.ppm) : v; }
 
-  // distance from point p to segment a-b — slot a new corner into the nearest wall
+  // distance from point p to segment a-b - slot a new corner into the nearest wall
   function segDist(p,a,b){
     var vx=b[0]-a[0], vy=b[1]-a[1], L=vx*vx+vy*vy;
     var t = L ? Math.max(0, Math.min(1, ((p[0]-a[0])*vx+(p[1]-a[1])*vy)/L)) : 0;
@@ -171,7 +171,7 @@ they diverge painfully.{% endcomment %}
     }
     return bi;
   }
-  // even-odd ray cast — is a board-space point inside the closed footprint?
+  // even-odd ray cast - is a board-space point inside the closed footprint?
   function pointInPoly(pt, poly){
     var x=pt[0], y=pt[1], inside=false;
     for (var i=0, j=poly.length-1; i<poly.length; j=i++){
@@ -423,7 +423,7 @@ they diverge painfully.{% endcomment %}
   }
 
   function fit(){ view={x:-sp.pad, y:-sp.pad, w:sp.W+2*sp.pad, h:sp.H+2*sp.pad}; redraw(); }
-  // adopt a floor's coordinate space (no fit/seed — callers own that ordering)
+  // adopt a floor's coordinate space (no fit/seed - callers own that ordering)
   function applySpace(space){
     sp = {W:space.w, H:space.h, ppm:space.ppm, pad:space.pad||0, grid:space.grid, metered:!!space.metered, outline:space.outline||''};
     box.style.aspectRatio = (sp.W+2*sp.pad) + '/' + (sp.H+2*sp.pad);
@@ -445,7 +445,7 @@ they diverge painfully.{% endcomment %}
   }
   fit();
 
-  // Changing floor is a different coordinate space — adopt it and reseed.
+  // Changing floor is a different coordinate space - adopt it and reseed.
   if (floorSel) floorSel.addEventListener('change', function(){
     applySpace(SPACES[curFloor()] || sp);
     if (kind === 'store'){ pts = seedSquare(); closed = true; hist = []; }
@@ -455,7 +455,7 @@ they diverge painfully.{% endcomment %}
   });
 })();
 
-// Searchable keeper dropdown — only on the store form (#id_keeper). A filter box
+// Searchable keeper dropdown - only on the store form (#id_keeper). A filter box
 // above the <select> hides non-matching options (native option.hidden).
 (function(){
   var sel = document.getElementById('id_keeper');

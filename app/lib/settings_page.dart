@@ -129,7 +129,7 @@ class _SettingsPageState extends State<SettingsPage> with TickerProviderStateMix
     );
   }
 
-  // Filled dark circular icon button — the action on the right of a card.
+  // Filled dark circular icon button - the action on the right of a card.
   Widget _iconBtn(IconData icon, VoidCallback? onTap, {bool busy = false}) {
     return FilledButton(
       onPressed: busy ? null : onTap,
@@ -189,7 +189,7 @@ class _SettingsPageState extends State<SettingsPage> with TickerProviderStateMix
     );
   }
 
-  // Only shown when there's an update (or a sync in flight) — "no task, no icon".
+  // Only shown when there's an update (or a sync in flight) - "no task, no icon".
   List<Widget> _syncAction() {
     if (_syncing) return [const SizedBox(width: 12), _iconBtn(Icons.sync, null, busy: true)];
     if (_updateAvailable == true) return [const SizedBox(width: 12), _iconBtn(Icons.sync, _doSync)];
@@ -355,7 +355,7 @@ class _SettingsPageState extends State<SettingsPage> with TickerProviderStateMix
         children: [
           const Text('Your identity', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: ink)),
           const SizedBox(height: 6),
-          const Text("You're anonymous. This is a one-way hash of a random ID — it can't be traced back to you.",
+          const Text("You're anonymous - a one-way hash of a random ID, can't be traced to you.",
               style: TextStyle(color: muted, fontSize: 13, height: 1.35)),
           const SizedBox(height: 12),
           Container(
@@ -388,7 +388,7 @@ class _SettingsPageState extends State<SettingsPage> with TickerProviderStateMix
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           leading: const Icon(Icons.build_rounded, size: 20, color: muted),
           title: const Text('Advanced', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: ink)),
-          subtitle: const Text('Developer — tweak the app without a rebuild',
+          subtitle: const Text('Developer - tweak the app without a rebuild',
               style: TextStyle(color: muted, fontSize: 12)),
           children: [
             _devField('Backend URL', _urlCtrl, TextInputType.url),
@@ -463,7 +463,7 @@ class _SettingsPageState extends State<SettingsPage> with TickerProviderStateMix
   Future<void> _resetCooldowns() async {
     await widget.scanner.db.clearDedup();
     if (!mounted) return;
-    _snack('Offer cooldowns cleared — offers can fire again');
+    _snack('Offer cooldowns cleared - offers can fire again');
   }
 
   void _snack(String m) =>

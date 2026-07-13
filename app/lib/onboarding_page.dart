@@ -35,11 +35,11 @@ class OnboardingPage extends StatelessWidget {
                   style: TextStyle(fontSize: 16, color: muted, height: 1.35)),
               const SizedBox(height: 40),
               _point(Icons.bluetooth_rounded,
-                  'We use Bluetooth to spot in-store beacons as you pass — no pairing, no connecting.'),
+                  'We use Bluetooth to spot in-store beacons as you pass - no pairing, no connecting.'),
               _point(Icons.location_on_rounded,
                   'Android requires location access for Bluetooth scanning. We never read GPS or track where you are.'),
               _point(Icons.visibility_off_rounded,
-                  "You're anonymous — a one-way hash, no account, no personal data. It can't be traced back to you."),
+                  "You're anonymous - a one-way hash, no account, no personal data. It can't be traced back to you."),
               const Spacer(),
               SizedBox(
                 width: double.infinity,

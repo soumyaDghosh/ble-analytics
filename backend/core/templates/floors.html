@@ -16,8 +16,8 @@
       <tr class="border-b border-line last:border-0 hover:bg-paper/50">
         <td class="px-5 py-3 font-500">{{ f.name }}</td>
         <td class="px-5 py-3 text-muted font-mono">{{ f.number }}</td>
-        <td class="px-5 py-3 font-mono text-xs {% if not f.width_m %}text-muted{% endif %}">{% if f.width_m %}{{ f.width_m }} × {{ f.height_m }} m{% else %}— not set —{% endif %}</td>
-        <td class="px-5 py-3 text-xs">{% if f.outline %}<span class="text-active font-500">✓ drawn</span>{% else %}<span class="text-muted">default rectangle</span>{% endif %}</td>
+        <td class="px-5 py-3 font-mono text-xs {% if not f.width_m %}text-muted{% endif %}">{% if f.width_m %}{{ f.width_m }} × {{ f.height_m }} m{% else %}- not set -{% endif %}</td>
+        <td class="px-5 py-3 text-xs">{% if f.outline %}<span class="inline-flex items-center gap-1 text-active font-500"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>drawn</span>{% else %}<span class="text-muted">default rectangle</span>{% endif %}</td>
         <td class="px-5 py-3 font-mono text-xs">{{ f.store_n }}</td>
         <td class="px-5 py-3 font-mono text-xs">{{ f.beacon_n }}</td>
         <td class="px-5 py-3 text-right"><a href="{% url 'floor_edit' f.id %}" class="font-500 text-ink hover:text-signal">Edit</a></td>

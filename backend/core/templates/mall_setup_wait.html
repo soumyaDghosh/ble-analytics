@@ -4,8 +4,8 @@
 
 {% block content %}
 <div class="max-w-md rounded-lg border border-line bg-surface p-6">
-  <p class="text-sm text-ink">This directory hasn’t been set up yet.</p>
-  <p class="mt-2 text-sm text-muted">Ask your administrator to create the mall. Once it’s ready, your stores and campaigns will show up here.</p>
+  <p class="text-sm text-ink">This directory isn't set up yet.</p>
+  <p class="mt-2 text-sm text-muted">Ask your admin to create the mall. Your stores and campaigns show up once it's ready.</p>
   <form method="post" action="{% url 'logout' %}" class="mt-4">{% csrf_token %}
     <button class="rounded-md border border-line px-3 py-1.5 text-sm text-muted hover:text-ink">Sign out</button>
   </form>

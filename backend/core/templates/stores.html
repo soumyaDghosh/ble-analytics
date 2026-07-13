@@ -21,7 +21,7 @@
         <td class="px-5 py-3 font-500">{{ s.name }}</td>
         <td class="px-5 py-3 text-muted">{{ s.category }}</td>
         <td class="px-5 py-3 text-muted">{{ s.floor.name }}</td>
-        <td class="px-5 py-3">{% if s.keeper %}<span class="font-500">{{ s.keeper.username }}</span>{% else %}<span class="text-muted">— unassigned —</span>{% endif %}</td>
+        <td class="px-5 py-3">{% if s.keeper %}<span class="font-500">{{ s.keeper.username }}</span>{% else %}<span class="text-muted">- unassigned -</span>{% endif %}</td>
         <td class="px-5 py-3 font-mono text-xs {% if s.beacon_n %}text-ink{% else %}text-muted{% endif %}">{{ s.beacon_n }}{% if not s.beacon_n %} · none{% endif %}</td>
         <td class="px-5 py-3 text-right"><a href="{% url 'store_edit' s.id %}" class="font-500 text-ink hover:text-signal">Edit</a></td>
       </tr>

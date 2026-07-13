@@ -63,7 +63,7 @@
     <!-- one contextual readout line -->
     <div class="mt-2 rounded-md border border-line bg-surface px-4 py-2.5">
       <p id="measure-line" class="font-display text-base font-600 text-ink">Set the size, then click to drop corner&nbsp;1</p>
-      <p class="mt-0.5 font-mono text-[11px] text-muted"><span id="m-grid">grid —</span> · <span id="m-pts">0</span> corners · <b>drawing:</b> click empty grid to add the next corner · click corner&nbsp;1 (or “Close boundary”) to finish · <b>after closing:</b> drag a corner or wall to move it · click a wall to insert a corner · click a corner to delete · Reopen to keep tracing · drag empty to pan · scroll to zoom · origin bottom-left (Y up)</p>
+      <p class="mt-0.5 font-mono text-[11px] text-muted"><span id="m-grid">grid -</span> · <span id="m-pts">0</span> corners · <b>drawing:</b> click empty grid to add the next corner · click corner&nbsp;1 (or "Close boundary") to finish · <b>after closing:</b> drag a corner or wall to move it · click a wall to insert a corner · click a corner to delete · Reopen to keep tracing · drag empty to pan · scroll to zoom · origin bottom-left (Y up)</p>
       <div class="mt-1 text-sm text-[#C43D2E]">{{ form.outline_json.errors }}</div>
     </div>
   </div>
@@ -135,7 +135,7 @@
     var s=0; for (var i=0;i<pts.length;i++){ var a=pts[i], b=pts[(i+1)%pts.length]; s+=a[0]*b[1]-b[0]*a[1]; }
     return Math.abs(s)/2/(sp.ppm*sp.ppm);
   }
-  // distance from point p to segment a-b — used to slot a new corner into the nearest wall
+  // distance from point p to segment a-b - used to slot a new corner into the nearest wall
   function segDist(p,a,b){
     var vx=b[0]-a[0], vy=b[1]-a[1], L=vx*vx+vy*vy;
     var t = L ? Math.max(0, Math.min(1, ((p[0]-a[0])*vx+(p[1]-a[1])*vy)/L)) : 0;
@@ -143,7 +143,7 @@
   }
   // nearest polygon wall to a screen point (px), skipping excluded edge indices.
   // Used to detect when the cursor is over a wall so a click inserts a corner INTO
-  // that specific wall — the user picks the wall, so there is no ambiguous guessing.
+  // that specific wall - the user picks the wall, so there is no ambiguous guessing.
   function nearestEdge(e, excl){
     var bi=-1, bd=14, n=pts.length;   // within 14 screen px counts as "on the wall"
     for (var i=0;i<n;i++){
@@ -229,7 +229,7 @@
     return clampPt(x, y);
   }
   function screenOf(p){ var r=box.getBoundingClientRect(); return [r.left+(p[0]-view.x)/view.w*r.width, r.top+(p[1]-view.y)/view.h*r.height]; }
-  // nearest existing corner under the pointer (screen space) — clicking it deletes it
+  // nearest existing corner under the pointer (screen space) - clicking it deletes it
   function hitHandle(e){
     var bi=-1, bd=12;
     for (var i=0;i<pts.length;i++){ var s=screenOf(pts[i]), d=Math.hypot(e.clientX-s[0], e.clientY-s[1]); if (d<bd){ bd=d; bi=i; } }
@@ -251,7 +251,7 @@
     chv.setAttribute('x1',s[0]); chv.setAttribute('x2',s[0]); chv.setAttribute('y1',view.y); chv.setAttribute('y2',view.y+view.h);
     chh.setAttribute('y1',s[1]); chh.setAttribute('y2',s[1]); chh.setAttribute('x1',view.x); chh.setAttribute('x2',view.x+view.w);
     chd.setAttribute('cx',s[0]); chd.setAttribute('cy',s[1]); chd.setAttribute('r',3*k);
-    // wall hover (insert/drag) is EDIT-phase only — never hijacks the draw
+    // wall hover (insert/drag) is EDIT-phase only - never hijacks the draw
     var ei = closed ? nearestEdge(e, []) : -1;
     if (ei >= 0){                                    // over a wall → click inserts a corner, drag shifts the wall
       var a=pts[ei], b=pts[(ei+1)%pts.length];
@@ -279,7 +279,7 @@
     down=true; moved=false; sx0=e.clientX; sy0=e.clientY; vx0=view.x; vy0=view.y;
     dragIdx = hitHandle(e); dragEdge = -1;
     if (dragIdx >= 0){ push(); }                     // about to move / delete / close on this corner
-    else if (closed){                                 // edit phase only — grabbing a wall
+    else if (closed){                                 // edit phase only - grabbing a wall
       var ei = nearestEdge(e, []);
       if (ei >= 0){ dragEdge = ei; edgeA0 = pts[ei].slice(); edgeB0 = pts[(ei+1)%pts.length].slice(); edgeStart = cursor(e); push(); }
     }

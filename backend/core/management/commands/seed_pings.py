@@ -1,4 +1,4 @@
-"""Simulate footfall by POSTing to the REAL /location/batch endpoint — exactly
+"""Simulate footfall by POSTing to the REAL /location/batch endpoint - exactly
 like the phone does. No direct DB inserts, so the heatmap data is provably the
 same shape and code path as live device data.
 
@@ -29,7 +29,7 @@ class Command(BaseCommand):
     def handle(self, *args, **o):
         beacons = list(Beacon.objects.all())
         if not beacons:
-            self.stderr.write('No beacons — run seed_config first.')
+            self.stderr.write('No beacons - run seed_config first.')
             return
 
         # A stable-ish popularity per beacon: gates and a lucky few draw crowds.

@@ -20,22 +20,22 @@
 </div>
 
 {% if hover_stores %}
-<!-- Hover alert — high dwell, low draw-in: people linger at the edge, don't come in -->
+<!-- Hover alert - high dwell, low draw-in: people linger at the edge, don't come in -->
 <div class="mt-6 flex items-start gap-3 rounded-lg border border-signal/50 bg-signal/10 px-5 py-3">
-  <span class="mt-0.5 shrink-0 text-signal">⚠</span>
+  <svg class="mt-0.5 shrink-0 text-signal" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
   <p class="text-sm leading-snug">
-    <span class="font-600">{{ hover_stores|length }} store{{ hover_stores|pluralize }} — high dwell, low draw-in.</span>
-    <span class="text-muted">Visitors linger but stay past 3m of the beacon — hovering at the edge, not coming in to the counter: <span class="text-ink font-500">{{ hover_stores|join:", " }}</span>.</span>
-    {% include "_info.html" with tip="These stores have enough traffic, but under 34% of detections happened within ~3m of the beacon — people spend most of their time at the store's edge, not close in. Worth checking the entrance, greeting, or window vs. in-store draw." %}
+    <span class="font-600">{{ hover_stores|length }} store{{ hover_stores|pluralize }} - high dwell, low draw-in.</span>
+    <span class="text-muted">Visitors linger but stay past 3m of the beacon - hovering at the edge, not coming in to the counter: <span class="text-ink font-500">{{ hover_stores|join:", " }}</span>.</span>
+    {% include "_info.html" with tip="Enough traffic, but under 34% of detections within ~3m of the beacon - visitors linger at the edge, not close in." %}
   </p>
 </div>
 {% endif %}
 
-<!-- Hourly footfall — when the mall fills up -->
+<!-- Hourly footfall - when the mall fills up -->
 <div class="mt-6 rounded-lg border border-line bg-surface">
   <div class="flex items-center justify-between border-b border-line px-5 py-3">
     <h2 class="font-display font-700 inline-flex items-center gap-1.5">Hourly footfall
-      {% include "_info.html" with tip="Unique visitors detected each hour (local time). The amber bar(s) mark the busiest hour." %}</h2>
+      {% include "_info.html" with tip="Unique visitors per hour (local time). Amber = busiest hour." %}</h2>
     <span class="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
       {% if hourly.peak_label %}peak {{ hourly.peak_label }}{% else %}today{% endif %}
     </span>
@@ -44,7 +44,7 @@
   <div class="px-5 py-4">
     <div class="flex items-end gap-[3px] h-28">
       {% for h, n in hourly.bars %}
-      <div class="relative flex-1 h-full flex items-end" data-tip="{{ h }}:00 — {{ n }} visitor{{ n|pluralize }}">
+      <div class="relative flex-1 h-full flex items-end" data-tip="{{ h }}:00 - {{ n }} visitor{{ n|pluralize }}">
         <span class="w-full rounded-t-sm transition {% if n == hourly.max and n > 0 %}bg-signal{% else %}bg-ink/15{% endif %}"
               style="height: {% widthratio n hourly.max 100 %}%"></span>
       </div>
@@ -64,7 +64,7 @@
   <div class="rounded-lg border border-line bg-surface">
     <div class="flex items-center justify-between border-b border-line px-5 py-3">
       <h2 class="font-display font-700 inline-flex items-center gap-1.5">Busiest today
-        {% include "_info.html" with tip="Stores ranked by <b>unique visitors</b> detected today — one device counts once no matter how long it stayed. The bar is relative to the #1 store (top store fills it). <b>Common area</b> = detections at gate/common beacons with no store." %}</h2>
+        {% include "_info.html" with tip="Ranked by <b>unique visitors</b> today - one device counts once. Bar is relative to #1. <b>Common area</b> = gate/common beacons, no store." %}</h2>
       <span class="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">by visitors</span>
     </div>
     {% if busiest %}
@@ -83,7 +83,7 @@
     {% else %}
     <div class="px-5 py-12 text-center">
       <p class="font-500">No footfall yet today.</p>
-      <p class="mt-1 text-sm text-muted">Detections appear once phones scan — or run the ping seeder.</p>
+      <p class="mt-1 text-sm text-muted">Detections appear once phones scan - or run the ping seeder.</p>
     </div>
     {% endif %}
   </div>
@@ -91,7 +91,7 @@
   <div class="rounded-lg border border-line bg-surface">
     <div class="flex items-center justify-between border-b border-line px-5 py-3">
       <h2 class="font-display font-700 inline-flex items-center gap-1.5">Engagement
-        {% include "_info.html" with tip="Share of a store's detections that happened within ~3m of its beacon — visitors who walked right up vs. those the beacon caught in passing. Higher = more people came close." %}</h2>
+        {% include "_info.html" with tip="Share of detections within ~3m of the beacon. Higher = more people came close." %}</h2>
       <span class="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">% within 3m</span>
     </div>
     {% if engagement %}
@@ -116,11 +116,11 @@
   </div>
 </div>
 
-<!-- Dwell today — how long visits lasted -->
+<!-- Dwell today - how long visits lasted -->
 <div class="mt-6 rounded-lg border border-line bg-surface">
   <div class="flex items-center justify-between border-b border-line px-5 py-3">
     <h2 class="font-display font-700 inline-flex items-center gap-1.5">Dwell today
-      {% include "_info.html" with tip="How long each visit lasted. A <b>visit (session)</b> = one phone at one store with no gap over 5 minutes; its length is first-to-last detection. The bars split all visits by length." %}</h2>
+      {% include "_info.html" with tip="How long each visit lasted. A <b>visit</b> = one phone at one store, no gap over 5min. Bars split visits by length." %}</h2>
     <span class="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">{{ dwell_today.total_sessions }} visit{{ dwell_today.total_sessions|pluralize }} today</span>
   </div>
   {% if dwell_today.total_sessions %}

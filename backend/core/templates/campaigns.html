@@ -37,11 +37,11 @@
           {% else %}<span class="rounded-full border border-line px-2.5 py-1 text-xs font-600 text-muted">Draft</span>{% endif %}
         </td>
         <td class="px-5 py-3 font-mono text-xs text-muted">{{ c.starts_at|date:"j M" }} – {{ c.ends_at|date:"j M" }}</td>
-        <td class="px-5 py-3 font-mono text-xs">{{ c.coupon|default:"—" }}</td>
+        <td class="px-5 py-3 font-mono text-xs">{{ c.coupon|default:"-" }}</td>
         <td class="px-5 py-3 text-right whitespace-nowrap">
           <a href="{% url 'campaign_edit' c.store_id c.id %}" class="text-sm font-500 text-ink hover:text-signal">Edit</a>
           <form method="post" action="{% url 'campaign_delete' c.store_id c.id %}" class="inline"
-                onsubmit="return confirm('Delete “{{ c.title|escapejs }}”?')">{% csrf_token %}
+                onsubmit="return confirm('Delete {{ c.title|escapejs }}?')">{% csrf_token %}
             <button class="ml-3 text-sm text-muted hover:text-ink">Delete</button>
           </form>
         </td>

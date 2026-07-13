@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import models
 
 # Coordinates are pixel positions on Floor.plan_image (PRD §3.3). No GPS.
-# FileField (not ImageField) keeps us off the Pillow dependency — the browser
+# FileField (not ImageField) keeps us off the Pillow dependency - the browser
 # renders the plan and overlays the heatmap; no server-side image work needed.
 
 
@@ -34,7 +34,7 @@ class Floor(models.Model):
     def __str__(self):
         return f'{self.mall.name} · {self.name}'
 
-    # Fixed px-per-metre. Whole so every 0.25 m lands on an integer pixel — grid
+    # Fixed px-per-metre. Whole so every 0.25 m lands on an integer pixel - grid
     # metrics stay clean (no 1.99 m). Seed floors were 50 m wide → this keeps their
     # old 1000-px width byte-identical. vb* = viewBox with a metre of breathing room
     # so a boundary curved past the nominal rectangle isn't clipped.
@@ -62,7 +62,7 @@ class Store(models.Model):
     image = models.FileField(upload_to='stores/', blank=True)   # storefront photo for the app card
     tagline = models.CharField(max_length=80, blank=True)        # one-line hook under the name
     badge = models.CharField(max_length=16, blank=True)          # short chip, e.g. OFFER / NEW
-    pos_x = models.IntegerField(default=0)  # label anchor — auto-set to shape centroid
+    pos_x = models.IntegerField(default=0)  # label anchor - auto-set to shape centroid
     pos_y = models.IntegerField(default=0)
     # Footprint polygon on the 1000x720 board: [[x, y], ...]. Null → the old
     # fixed 128x92 box at pos_x/pos_y (back-compat). A store is an area, not a point.
