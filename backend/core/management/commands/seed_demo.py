@@ -2,7 +2,7 @@
 
 Seeds the same config as seed_config (mall, floors, stores, beacons, campaigns,
 users, cache) and then generates realistic LocationPing + CampaignImpression
-rows using direct ORM inserts — no running server required.
+rows using direct ORM inserts - no running server required.
 
 Pings mimic exactly what a phone POSTs to /api/v1/location/batch:
   - 64-char SHA-256 device hashes
@@ -19,6 +19,7 @@ Usage:
     uv run python manage.py seed_demo --hours 48         # spread across 48h
     uv run python manage.py seed_demo --footfall-only    # add footfall to existing config
 """
+
 import hashlib
 import math
 import random
@@ -33,12 +34,10 @@ from core.models import (
     Mall, Store,
 )
 
-# ▸▸▸ Config constants — identical to seed_config.py ▸▸▸▸▸▸▸▸▸▸▸▸▸▸▸▸▸▸▸▸▸▸
-
 W, H = 1000, 720
 
 STORES = [
-    ('Nike', 'nike', 'Sportswear', 0, 300, 180, 'Just do it — new drops in', 'OFFER'),
+    ('Nike', 'nike', 'Sportswear', 0, 300, 180, 'Just do it - new drops in', 'OFFER'),
     ('Starbucks', 'starbucks', 'Cafe', 0, 520, 120, 'Handcrafted coffee & bites', 'FREE'),
     ('Zara', 'zara', 'Fashion', 0, 720, 200, 'New season arrivals', 'NEW'),
     ('Apple', 'apple', 'Electronics', 0, 800, 460, 'Latest iPhone, Mac & more', ''),
@@ -414,7 +413,7 @@ class Command(BaseCommand):
         else:
             mall = Mall.objects.first()
             if not mall:
-                self.stderr.write('No config found — run without --footfall-only first.')
+                self.stderr.write('No config found - run without --footfall-only first.')
                 return
             gate = Beacon.objects.filter(store__isnull=True).first()
             stores_by_name = {s.name: s for s in Store.objects.all()}

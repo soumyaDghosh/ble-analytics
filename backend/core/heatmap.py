@@ -4,7 +4,7 @@ from django.utils import timezone
 
 from .models import LocationPing
 
-# RSSI honestly encodes distance, never bearing — a ping only says how far a
+# RSSI honestly encodes distance, never bearing - a ping only says how far a
 # device was from the beacon, not which way. So everything here is a distance
 # band (near/mid/far), never a position. Footfall bands a visitor by their
 # *closest* approach; Focus bands a store's dwell *time* by distance.
@@ -23,7 +23,7 @@ def _store_pings(mall_id, start, end, store_ids=None):
 
 
 def beacon_counts(mall_id, floor_id, start, end, beacon_ids=None):
-    # Footfall = distinct devices (people), NOT raw pings — one lingering phone
+    # Footfall = distinct devices (people), NOT raw pings - one lingering phone
     # emits many pings but is one visitor.
     qs = (LocationPing.objects
           .filter(mall_id=mall_id, beacon__floor_id=floor_id,
@@ -35,17 +35,7 @@ def beacon_counts(mall_id, floor_id, start, end, beacon_ids=None):
 
 
 def store_band_visitors(mall_id, start, end, store_ids=None):
-    """Per-store visitor distance distribution — each distinct device counted
-    ONCE, in the band of its *closest* approach (min distance) over the window.
-    So near+mid+far == the true unique-visitor count.
-
-    Closest approach, not average: if a phone ever got within 3m it *entered*
-    (near) — they're not Schrödinger's cat, averaging in their far pings would
-    wrongly demote a real visit. A device lands in `far` only if it never came
-    within MID_M — a true passer-by.
-
-    Returns {store_id: {'near': int, 'mid': int, 'far': int, 'total': int}}.
-    """
+    """Per-store visitor count by distance band (closest approach)."""
     # One row per (store, device) with that device's closest distance to the store.
     qs = (_store_pings(mall_id, start, end, store_ids)
           .values('store_id', 'device_hash').annotate(mind=Min('est_distance')))
@@ -63,7 +53,7 @@ def store_band_visitors(mall_id, start, end, store_ids=None):
 def store_engagement(mall_id, start, end, store_ids=None):
     """Per-store near-share: what fraction of a store's detections landed within
     NEAR_M (~3m) of the beacon. Reads as "did they get close, or just pass by".
-    Ping-based (not distinct devices) so it spreads — counting distinct visitors
+    Ping-based (not distinct devices) so it spreads - counting distinct visitors
     saturates near 100%, since a lingering phone almost always logs one near ping.
     Returns [{'store_id','near','total','share'}] sorted by share desc, only
     stores with total >= MIN_SAMPLE detections (small-N would be noise)."""
@@ -84,7 +74,7 @@ def store_engagement(mall_id, start, end, store_ids=None):
 
 
 def store_dwell_by_band(mall_id, start, end, store_ids=None):
-    """Per-store dwell *time* split across distance bands — how much of a store's
+    """Per-store dwell *time* split across distance bands - how much of a store's
     detection-time was spent close (near, at the counter) vs at the edge (mid/far).
     Ping-count is the time proxy: pings are ~periodic, so more pings in a band ≈
     more time there. (ponytail: count proxy; sum consecutive-ping deltas if the
