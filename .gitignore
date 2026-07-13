@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# Django / DB
+db.sqlite3
+db.sqlite3.*
+
+# App build artifacts
+app/.dart_tool/
+app/build/
+app/.idea/
+app/.fvm/
+app/.flutter-plugins-dependencies
+app/ble_mall.iml
+
+# Backend build
+backend/.venv/
+
+# Tool config
+.claude/
+.commandcode/
