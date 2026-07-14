@@ -11,8 +11,8 @@ from django.utils.html import format_html
 
 from .dwell import (BUCKET_NAMES, DOMINANT_COLOR, dwell_buckets_per_store,
                     dwell_stats)
-from .forms import (BeaconForm, CampaignForm, FloorForm, MallForm, SignupForm,
-                    StoreForm)
+from .forms import (AdminSignupForm, BeaconForm, CampaignForm, FloorForm,
+                    MallForm, SignupForm, StoreForm)
 from .heatmap import (BAND_COLOR, beacon_counts, hourly_footfall,
                       store_band_visitors, store_dwell_by_band, store_engagement)
 from .models import (Beacon, CacheVersion, Campaign, Floor, LocationPing, Mall,
@@ -412,6 +412,22 @@ def beacon_edit(request, pk=None):
     else:
         form = BeaconForm(instance=inst)
     return render(request, 'place_form.html', _place_ctx(mall, form, 'beacon', inst))
+
+
+# ---- Admin first-run setup --------------------------------------------------
+
+def setup(request):
+    """One‑time admin account creation. Only works when no superuser exists yet."""
+    if get_user_model().objects.filter(is_superuser=True).exists():
+        return redirect('login')
+    if request.method == 'POST':
+        form = AdminSignupForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('login')
+    else:
+        form = AdminSignupForm()
+    return render(request, 'setup.html', {'form': form})
 
 
 # ---- Storekeeper signup + admin approval -------------------------------------

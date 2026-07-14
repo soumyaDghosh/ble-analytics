@@ -1,8 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Sign in · City Center Directory{% endblock %}
+{% block title %}Setup · City Center Directory{% endblock %}
 {% block content_anon %}
 <div class="min-h-screen grid lg:grid-cols-2">
-  <!-- Blueprint panel -->
   <div class="relative hidden lg:block blueprint border-r border-line">
     <svg viewBox="0 0 500 360" class="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMid slice">
       <g fill="none" stroke="#C3CAD2" stroke-width="2">
@@ -27,36 +26,25 @@
     </div>
   </div>
 
-  <!-- Form -->
   <div class="flex items-center justify-center p-8">
     <div class="w-full max-w-sm">
-      <p class="font-mono text-[11px] uppercase tracking-[0.22em] text-muted">Directory Access</p>
-      <h1 class="mt-2 font-display text-3xl font-700 tracking-tight">Sign in</h1>
-      <p class="mt-1 text-sm text-muted">Admin and storekeeper console.</p>
-
-      {% if form.errors %}
-      <p class="mt-4 rounded-md border border-signal/40 bg-signal/10 px-3 py-2 text-sm text-ink">
-        That username and password didn't match. Try again.
-      </p>
-      {% endif %}
+      <p class="font-mono text-[11px] uppercase tracking-[0.22em] text-muted">First Run</p>
+      <h1 class="mt-2 font-display text-3xl font-700 tracking-tight">Create admin account</h1>
+      <p class="mt-1 text-sm text-muted">This is a one‑time setup. Choose your credentials.</p>
 
       <form method="post" class="mt-6 space-y-4">
         {% csrf_token %}
-        <label class="block">
-          <span class="mb-1 block text-sm font-500">Username</span>
-          <input name="username" autofocus autocomplete="username"
-                 class="w-full rounded-md border border-line bg-surface px-3 py-2.5 text-sm focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal/20">
-        </label>
-        <label class="block">
-          <span class="mb-1 block text-sm font-500">Password</span>
-          <input name="password" type="password" autocomplete="current-password"
-                 class="w-full rounded-md border border-line bg-surface px-3 py-2.5 text-sm focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal/20">
-        </label>
-        <button class="w-full rounded-md bg-ink px-3 py-2.5 text-sm font-600 text-white hover:bg-black transition">
-          Enter console
-        </button>
+        {% for field in form %}
+        <div>
+          <label class="mb-1 block text-sm font-500">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<p class="mt-1 text-xs text-muted">{{ field.help_text|safe }}</p>{% endif %}
+          <div class="text-sm text-[#C43D2E]">{{ field.errors }}</div>
+        </div>
+        {% endfor %}
+        {{ form.non_field_errors }}
+        <button class="w-full rounded-md bg-ink px-3 py-2.5 text-sm font-600 text-white hover:bg-black transition">Create account</button>
       </form>
-      <p class="mt-6 text-sm text-muted">Storekeeper? <a href="{% url 'signup' %}" class="font-600 text-ink underline decoration-signal underline-offset-2 hover:text-signal">Request an account</a></p>
     </div>
   </div>
 </div>

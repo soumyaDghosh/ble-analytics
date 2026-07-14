@@ -160,6 +160,28 @@ class BeaconForm(Styled):
         widgets = {'pos_x': forms.HiddenInput(), 'pos_y': forms.HiddenInput()}
 
 
+class AdminSignupForm(UserCreationForm):
+    email = forms.EmailField(required=True)
+
+    class Meta(UserCreationForm.Meta):
+        model = get_user_model()
+        fields = ['username', 'email']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for f in self.fields.values():
+            f.widget.attrs['class'] = (f.widget.attrs.get('class', '') + ' ' + INPUT).strip()
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.is_superuser = True
+        user.is_staff = True
+        user.is_active = True
+        if commit:
+            user.save()
+        return user
+
+
 class SignupForm(UserCreationForm):
     """Public storekeeper self-registration. Lands inactive - an admin approves
     (flips is_active) on the Keepers page and assigns the actual Store afterward."""
