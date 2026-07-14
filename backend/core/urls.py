@@ -11,6 +11,7 @@ urlpatterns = [
 
     # Auth
     path('setup/', views.setup, name='setup'),
+    path('seed-demo/', views.seed_demo, name='seed_demo'),
     path('login/', LoginView.as_view(template_name='login.html'), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('signup/', views.signup, name='signup'),

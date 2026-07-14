@@ -31,12 +31,13 @@ class MallSetupGate:
         self.get_response = get_response
         self.setup_url = reverse('mall_setup')
         self.logout_url = reverse('logout')
+        self.seed_url = reverse('seed_demo')
 
     def __call__(self, request):
         user = getattr(request, 'user', None)
         if (user is not None and user.is_authenticated
                 and not request.path.startswith(self.EXEMPT_PREFIXES)
-                and request.path not in (self.setup_url, self.logout_url)
+                and request.path not in (self.setup_url, self.logout_url, self.seed_url)
                 # ponytail: one cheap indexed exists() per gated page load; cache
                 # it only if that ever shows up in a profile.
                 and not Mall.objects.exists()):

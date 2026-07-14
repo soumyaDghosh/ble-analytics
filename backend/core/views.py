@@ -4,6 +4,7 @@ from functools import wraps
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied
+from django.core.management import call_command
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -412,6 +413,18 @@ def beacon_edit(request, pk=None):
     else:
         form = BeaconForm(instance=inst)
     return render(request, 'place_form.html', _place_ctx(mall, form, 'beacon', inst))
+
+
+# ---- Admin demo seeding ------------------------------------------------------
+
+@login_required
+@admin_only
+def seed_demo(request):
+    """Rebuild demo config + footfall in-process by visiting the URL.
+    ponytail: GET on purpose so an admin can just hit /seed-demo/; admin-gated
+    since it wipes demo data. If browser prefetch ever fires it, make it POST."""
+    call_command('seed_demo')
+    return redirect('dashboard')
 
 
 # ---- Admin first-run setup --------------------------------------------------
