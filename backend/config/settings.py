@@ -33,6 +33,7 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.ngrok.io',
     'https://*.ngrok.app',
     'https://*.ngrok.dev',
+    'https://*.pythonanywhere.com',
 ]
 
 
