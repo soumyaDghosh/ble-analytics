@@ -5,7 +5,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
-from django.db.models import Count
+from django.db.models import Count, Max, Min
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.html import format_html
@@ -424,6 +425,34 @@ def seed_demo(request):
     ponytail: GET on purpose so an admin can just hit /seed-demo/; admin-gated
     since it wipes demo data. If browser prefetch ever fires it, make it POST."""
     call_command('seed_demo')
+    return redirect('dashboard')
+
+
+@login_required
+@admin_only
+def seed_pings(request):
+    """Inspect seeded pings as JSON: totals, per-store counts, latest 20 rows.
+    ponytail: capped sample, not the full 1-2k rows - bump ?limit= if needed."""
+    qs = LocationPing.objects.order_by('-time')
+    limit = min(int(request.GET.get('limit', 20)), 200)
+    agg = qs.aggregate(first=Min('time'), last=Max('time'))
+    return JsonResponse({
+        'total': qs.count(),
+        'range': {'first': agg['first'], 'last': agg['last']},
+        'per_store': dict(qs.values_list('store_id').annotate(n=Count('id')).values_list('store_id', 'n')),
+        'sample': list(qs.values('time', 'device_hash', 'beacon_id', 'store_id',
+                                 'rssi', 'est_distance')[:limit]),
+    })
+
+
+@login_required
+@admin_only
+def restore(request):
+    """Full clean slate: drop the demo mall (cascades floors/stores/beacons/pings/
+    campaigns/impressions) + demo users. Back to fresh-install → MallSetupGate.
+    ponytail: same teardown seed_config does; GET so an admin just hits the URL."""
+    Mall.objects.all().delete()
+    get_user_model().objects.filter(username__in=['admin', 'nike']).delete()
     return redirect('dashboard')
 
 
