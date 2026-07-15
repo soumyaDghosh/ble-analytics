@@ -19,6 +19,7 @@ Usage:
     uv run python manage.py seed_demo --hours 48         # spread across 48h
     uv run python manage.py seed_demo --footfall-only    # add footfall to existing config
 """
+import time
 
 import hashlib
 import math
@@ -195,7 +196,7 @@ def seed_config():
         c.target_beacons.set(store.beacons.all())
         campaigns.append(c)
 
-    CacheVersion.objects.create(mall=mall, version=1)
+    CacheVersion.objects.create(mall=mall, version=time.time())
 
     return {
         'mall': mall,
